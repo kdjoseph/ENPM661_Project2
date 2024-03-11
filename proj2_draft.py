@@ -1,4 +1,4 @@
-import pygame, sys, math
+import pygame, sys, math, time
 import heapq as hq
 from collections import deque
 from pygame.locals import *
@@ -8,23 +8,21 @@ pygame.init()
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 500
 
-####### DISJKSTRA ALGORITM ########################################################################################
 def ObstacleCheck(x_cord, y_cord):
+    """Checks if a point is in the obstacle space. Takes the point's (x,y) as input and returns False if it's in the obstacle space & True if it's not. """
     # Hexagon Obstacle
     if (y_cord >= (-x_cord/math.sqrt(3) + 90 + 650/math.sqrt(3))) and (y_cord <= (-x_cord/math.sqrt(3) + 410 + 650/math.sqrt(3))) and (x_cord >= (650 - 80*math.sqrt(3))) and (x_cord <= (650 + 80*math.sqrt(3))) and (y_cord <= (x_cord/math.sqrt(3) + 410 -650/math.sqrt(3))) and (y_cord >= (x_cord/math.sqrt(3) + 90 -650/math.sqrt(3))):
         return False
-   
     # First 2 rectangular obstacles
     elif (x_cord >=95 and x_cord<= 180 and y_cord <= 405) or (x_cord >=270 and x_cord <= 355 and y_cord >= 95):
         return False
-
     # 4th Obstacle, on the right of display
     if (x_cord >= (1200-(205+100)) and x_cord <= (1200-100-85) and y_cord >= 45 and y_cord <= (85+45)) or (x_cord >= (1200-100-85) and x_cord <= (1200-95) and y_cord>=45 and y_cord <= (50+405)) or(x_cord >= (1200-205-100) and x_cord <= (1200-100-85) and y_cord >= (450-80) and y_cord <= (450+5)):
         return False
     # Border region outside all obstacles 
     elif (x_cord <=5 or x_cord >= (WINDOW_WIDTH-5)) or (y_cord <=5 or y_cord >= (WINDOW_HEIGHT-5)):
         return False
-    else:
+    else:               # not in obstacle space
         return True
 
 open_list = []  # to be used for heapq for nodes in the open-list
@@ -34,12 +32,13 @@ lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes a
 path = deque()     # deque used for backtracking
 
 def DijkstraAlgo():
+    """Searches for optimal path from a user-input starting point to a goal point """
     start_pt_trigger = 1
     goal_pt_trigger =1
     while start_pt_trigger ==1:
         try:
-            start_x, startb_y = float(input('Enter starting point x-cordinate: ')), float(input('Enter starting point y-cordinate: '))
-            # start_x, startb_y = 6, 6
+            start_x, startb_y = float(input('Enter starting point x-cordinate : ')), float(input('Enter starting point y-cordinate: '))
+            # worst case start wrt to coord at bottom-left corner: start (6,6), goal (1194, 162) or goal (1194, 338)
         except:
             print('you did not enter a number, please enter only numbers')
             continue
@@ -51,7 +50,6 @@ def DijkstraAlgo():
     while goal_pt_trigger == 1:
         try:
             goal_x, goalb_y = float(input('Enter goal point x- cordinate: ')), float(input('Enter goal point y-cordinate: '))
-            # goal_x, goalb_y = 12, 12
         except:
             print('you did not enter a number, please enter only numbers')
             continue
@@ -63,7 +61,6 @@ def DijkstraAlgo():
             print('you chose the same starting and goal points, choose different starting and goal points')
         else:
             goal_pt_trigger = 0
-    # worst case pts in coord at bottom left corner: (6, 6) end (1194, 162) or goal wrt to coord at top left corner -> (1194, 338)
 
     cost2c_start, parent_node = 0.0, None
     # creating tuple with cost to come and coordinate values (x,y) 
@@ -84,36 +81,28 @@ def DijkstraAlgo():
             continue
 
         close_list.add((curnt_x, curnt_y))  # add popped-node into closed list
-
         # Check if we've reached the goal,if yes, backtrack to find path
         if (curnt_x, curnt_y) == (goal_x, goal_y):
-            print("Goal reached!")
+            print(f"Goal point {(curnt_x, curnt_y)} reached!")
             # Backtracking
             curnt_node = (curnt_x, curnt_y)
-            # Continue backtracking until start node reached
+            # Keep backtracking until start node reached
             while curnt_node is not None:
                 path.appendleft(curnt_node)  # Add the current node to the path
                 curnt_node = prnt_node_map.get(curnt_node)  # Move to the parent node to now search for its parent
-
-            print('final x, final y:', curnt_x, curnt_y)
-            print('goal x, goal y:', goal_x, goal_y, '\n')
-            # print('while_loop counter =', while_loop_cntr)
-            # print('for_loop_counter =', for_loop_cntr, '\n')
-            # print(len(prnt_node_map), '\n')
-            # print(f'size of the path deque {len(path)} \n')
             print('Path found!')
             break
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
         for dx, dy, cost2c in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)): 
             nx, ny = curnt_x + dx, curnt_y + dy
-
+            # Ignore node if it's in the obstacle space.
             if not ObstacleCheck(nx,ny):
                 continue
 
             if (nx, ny) not in close_list:
                 new_cost2c = curnt_cost2c + cost2c
-                # Only updated the heapq & other dictionaries if new node not in lowest-cost map or if now it's the lowe-cost node  
+                # Only update the heapq & other dictionaries if new node not in lowest-cost map or if now it's the lowe-cost node  
                 if (nx, ny) not in lowest_c2c_map or new_cost2c < lowest_c2c_map.get((nx, ny)):
                     prnt_node_map[(nx, ny)] = (curnt_x, curnt_y)
                     lowest_c2c_map[(nx,ny)] = new_cost2c
@@ -123,11 +112,12 @@ def DijkstraAlgo():
             print('No solution could be found')
             break
 
-# Colours
-BACKGROUND = (0, 40, 255)
+#### ANIMATION SECTION ####
+# Colours (R, G, B)
+BACKGROUND = (0, 40, 255) # blue
 RED = (255, 30, 70)
 YELLOW = (255, 255, 0)
-GREEN = (153, 255, 153)
+GREEN = (0, 100, 0)
 WHITE = (255, 255, 255)
 
 # Game Setup
@@ -143,7 +133,7 @@ vertxE = (vertxD[0], vertxD[1]-150)
 vertxF = (650, 100)
 
 # Vertices for hexagon bloated by 5 mm to add clearance
-# A starts on left verticle side at the top, then goes down counter clock-wise
+# Point A starts on left verticle side at the top, then goes down counter clock-wise
 bVertxA = (650-80*math.sqrt(3), 170)
 bVertxB = (650, 90)
 bVertxC = (650+80*math.sqrt(3), 170)
@@ -151,16 +141,31 @@ bVertxD = (650+80*math.sqrt(3), 330)
 bVertxE = (650, 410)
 bVertxF = (650-80*math.sqrt(3), 330)
 
-# Function to draw obstacles and environment
+# Border rectangles to add 5 unit bloat to walls
+wrect1 = pygame.Rect(0,0, 95, 5)
+wrect2 = pygame.Rect(0, 5, 5, 495 )
+wrect3 = pygame.Rect(5,495, 275-5, 5)
+wrect4 = pygame.Rect(100+75+5, 0, 1200-180, 5)
+wrect5 = pygame.Rect(1200-5, 5, 5, 500-5)
+wrect6 = pygame.Rect(100+75+100+75+5, 495, 1200-250, 5)
+
 def draw_environment(WINDOW):
+    """ Draws the obstacles and background """
     WINDOW.fill(BACKGROUND)
-    # Bloated obstacles for visualization
+    # Highligh 5 unit bloat around obstacles
     pygame.draw.polygon(WINDOW, YELLOW, (bVertxA, bVertxB, bVertxC, bVertxD, bVertxE, bVertxF))
     pygame.draw.rect(WINDOW, YELLOW, (95, 0, 85, 405))
     pygame.draw.rect(WINDOW, YELLOW, (270, 95, 85, 405))
     pygame.draw.rect(WINDOW, YELLOW, (1200-(205+100), 45, 210, 85))
     pygame.draw.rect(WINDOW, YELLOW, (1200-(100+200-115), 50+75, 90, 400-75-75))
     pygame.draw.rect(WINDOW, YELLOW, (1200-(205+100), 50+75+(400-75*2)-5, 210, 85))
+    # Drawing the 5 unit bloat for walls
+    pygame.draw.rect(WINDOW, YELLOW, wrect1)
+    pygame.draw.rect(WINDOW, YELLOW, wrect2)
+    pygame.draw.rect(WINDOW, YELLOW, wrect3)
+    pygame.draw.rect(WINDOW, YELLOW, wrect4)
+    pygame.draw.rect(WINDOW, YELLOW, wrect5)
+    pygame.draw.rect(WINDOW, YELLOW, wrect6)
     # Actual obstacles
     pygame.draw.polygon(WINDOW, RED, (vertxA, vertxB, vertxC, vertxD, vertxE, vertxF))
     pygame.draw.rect(WINDOW, RED, (100, 0, 75, 400))
@@ -171,37 +176,53 @@ def draw_environment(WINDOW):
     pygame.display.update()
 
 def animate_explored_nodes(WINDOW, prnt_node_map, nodes_per_frame=10):
+    """ Animates the explored nodes. Takes the display-window and parent-node map dictionary as inputs"""
     node_list = list(prnt_node_map.keys())
     for i in range(0, len(node_list), nodes_per_frame):
         for node in node_list[i:i+nodes_per_frame]:
             pygame.draw.circle(WINDOW, GREEN, (int(node[0]), int(node[1])), 1)
         pygame.display.update()
-        pygame.time.delay(1)
+        pygame.time.delay(1)  # delay to adjust animation speed
 
-# Animate optimal path
 def animate_optimal_path(WINDOW, path):
+    """Function to animate moving from start to goal using the optimal path"""
     for node in path:
         pygame.draw.circle(WINDOW, WHITE, (int(node[0]), int(node[1])), 2)
         pygame.display.update()
-        pygame.time.delay(3) 
+        pygame.time.delay(3)  # delay to adjust animation speed
 
+#### MAIN FUNCTION (start algorithm, then animates) ###############
 def main():
-
+    """ Main function to start and animate the algorithm search"""
+    dijkstra_strt_time = time.time()
     DijkstraAlgo()
-    WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    pygame.display.set_caption('DIJKSTRA!')
+    dijkstra_end_time = time.time()
+    dijkstra_run_time = dijkstra_end_time - dijkstra_strt_time  # calculates runtime of the search algorithm
+    print(f"Dijkstra Algorithm Execution Time: {dijkstra_run_time} seconds")
 
-    draw_environment(WINDOW)
-    animate_explored_nodes(WINDOW, prnt_node_map)
-    animate_optimal_path(WINDOW, path)
+    # if optimal path is found, create animation
+    if len(path) > 0: 
+        animation_strt_time = time.time()  
 
-    # Main game loop for event handling
-    while True:
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-        fpsClock.tick(FPS)
+        WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+        pygame.display.set_caption('DIJKSTRA!')
+        draw_environment(WINDOW)
+        animate_explored_nodes(WINDOW, prnt_node_map)
+        animate_optimal_path(WINDOW, path)
+
+        animation_end_time = time.time()
+        animation_run_time = animation_end_time - animation_strt_time
+        print(f"Animation Execution Time: {animation_run_time} seconds, \n")
+        print(f'Total execution time of search algorithm & animation {dijkstra_run_time+animation_run_time}')
+        # Main game loop for event handling
+        while True:
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    pygame.quit()
+                    sys.exit()
+            fpsClock.tick(FPS)
+    else:
+        print('The algorithm could not find an optimal path')
 
 if __name__ == "__main__":
     main()
