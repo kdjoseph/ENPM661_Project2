@@ -83,7 +83,7 @@ def DijkstraAlgo():
         close_list.add((curnt_x, curnt_y))  # add popped-node into closed list
         # Check if we've reached the goal,if yes, backtrack to find path
         if (curnt_x, curnt_y) == (goal_x, goal_y):
-            print(f"Goal point {(curnt_x, curnt_y)} reached!")
+            print(f"Goal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
             # Backtracking
             curnt_node = (curnt_x, curnt_y)
             # Keep backtracking until start node reached
@@ -189,7 +189,7 @@ def animate_optimal_path(WINDOW, path):
     for node in path:
         pygame.draw.circle(WINDOW, WHITE, (int(node[0]), int(node[1])), 2)
         pygame.display.update()
-        pygame.time.delay(3)  # delay to adjust animation speed
+        pygame.time.delay(4)  # delay to adjust animation speed
 
 #### MAIN FUNCTION (start algorithm, then animates) ###############
 def main():
@@ -213,7 +213,7 @@ def main():
         animation_end_time = time.time()
         animation_run_time = animation_end_time - animation_strt_time
         print(f"Animation Execution Time: {animation_run_time} seconds, \n")
-        print(f'Total execution time of search algorithm & animation {dijkstra_run_time+animation_run_time}')
+        print(f'Total execution time of search algorithm & animation {dijkstra_run_time+animation_run_time} seconds')
         # Main game loop for event handling
         while True:
             for event in pygame.event.get():
