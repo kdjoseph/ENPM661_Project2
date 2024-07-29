@@ -42,7 +42,7 @@ def DijkstraAlgo():
         except:
             print('you did not enter a number, please enter only numbers')
             continue
-        start_y = 500 - startb_y # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate
+        start_y = 500 - startb_y # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
         if not ObstacleCheck(start_x, start_y):
             print('The chosen start point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
         else:
@@ -53,7 +53,7 @@ def DijkstraAlgo():
         except:
             print('you did not enter a number, please enter only numbers')
             continue
-        goal_y = 500 - goalb_y  # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate
+        goal_y = 500 - goalb_y  # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
         if not ObstacleCheck(goal_x, goal_y):
             print('The chosen goal point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
             continue
@@ -102,7 +102,7 @@ def DijkstraAlgo():
 
             if (nx, ny) not in close_list:
                 new_cost2c = curnt_cost2c + cost2c
-                # Only update the heapq & other dictionaries if new node not in lowest-cost map or if now it's the lowe-cost node  
+                # Only update the heapq & other dictionaries if new node not in lowest-cost map or if now it's the lowest-cost node  
                 if (nx, ny) not in lowest_c2c_map or new_cost2c < lowest_c2c_map.get((nx, ny)):
                     prnt_node_map[(nx, ny)] = (curnt_x, curnt_y)
                     lowest_c2c_map[(nx,ny)] = new_cost2c
@@ -200,7 +200,7 @@ def main():
     dijkstra_run_time = dijkstra_end_time - dijkstra_strt_time  # calculates runtime of the search algorithm
     print(f"Dijkstra Algorithm Execution Time: {dijkstra_run_time} seconds")
 
-    # if optimal path is found, create animation
+    # If an optimal path is found, create animation
     if len(path) > 0: 
         animation_strt_time = time.time()  
 
