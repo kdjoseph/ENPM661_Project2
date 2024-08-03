@@ -31,8 +31,8 @@ prnt_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited
 lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost, used to ensure only lowest cost in open-list
 path = deque()     # deque used for backtracking
 
-def DijkstraAlgo():
-    """Searches for optimal path from a user-input starting point to a goal point """
+def user_inputs():
+    """ Asks the user to enter the start and goal points, and returns them"""
     start_pt_trigger = 1
     goal_pt_trigger =1
     while start_pt_trigger ==1:
@@ -61,6 +61,12 @@ def DijkstraAlgo():
             print('you chose the same starting and goal points, choose different starting and goal points')
         else:
             goal_pt_trigger = 0
+    return start_x, start_y, goal_x, goal_y 
+
+def DijkstraAlgo():
+    """Searches for optimal path from a user-input starting point to a goal point """
+
+    start_x, start_y, goal_x, goal_y = user_inputs()
 
     cost2c_start, parent_node = 0.0, None
     # creating tuple with cost to come and coordinate values (x,y) 
