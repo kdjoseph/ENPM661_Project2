@@ -32,6 +32,7 @@ lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes a
 path = deque()     # deque used for backtracking
 
 def Backpedal(vertex):
+    """ backtracks to create a path from the current node back to the initial node. Returns printout saying whether a path was found or not"""
     # Keep backtracking until start node reached
     while vertex is not None:
         path.appendleft(vertex)  # Add the current node to the path
@@ -102,11 +103,6 @@ def DijkstraAlgo():
             print(f"\nGoal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
             # Backtracking
             curnt_node = (curnt_x, curnt_y)
-            # Keep backtracking until start node reached
-            # while curnt_node is not None:
-            #     path.appendleft(curnt_node)  # Add the current node to the path
-            #     curnt_node = prnt_node_map.get(curnt_node)  # Move to the parent node to now search for its parent
-            # print('Path found!')
             Backpedal(curnt_node)
             break
 
