@@ -31,6 +31,16 @@ prnt_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited
 lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost, used to ensure only lowest cost in open-list
 path = deque()     # deque used for backtracking
 
+def Backpedal(vertex):
+    # Keep backtracking until start node reached
+    while vertex is not None:
+        path.appendleft(vertex)  # Add the current node to the path
+        vertex = prnt_node_map.get(vertex)  # Move to the parent node to now search for its parent
+    if len(path)>1:
+        return print('Path found! \n')
+    else:
+        return print('Could not find a path \n')
+
 def user_inputs():
     """ Asks the user to enter the start and goal points, and returns them"""
     start_pt_trigger = 1
@@ -89,14 +99,15 @@ def DijkstraAlgo():
         close_list.add((curnt_x, curnt_y))  # add popped-node into closed list
         # Check if we've reached the goal,if yes, backtrack to find path
         if (curnt_x, curnt_y) == (goal_x, goal_y):
-            print(f"Goal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
+            print(f"\nGoal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
             # Backtracking
             curnt_node = (curnt_x, curnt_y)
             # Keep backtracking until start node reached
-            while curnt_node is not None:
-                path.appendleft(curnt_node)  # Add the current node to the path
-                curnt_node = prnt_node_map.get(curnt_node)  # Move to the parent node to now search for its parent
-            print('Path found!')
+            # while curnt_node is not None:
+            #     path.appendleft(curnt_node)  # Add the current node to the path
+            #     curnt_node = prnt_node_map.get(curnt_node)  # Move to the parent node to now search for its parent
+            # print('Path found!')
+            Backpedal(curnt_node)
             break
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
@@ -207,7 +218,7 @@ def main():
     print(f"Dijkstra Algorithm Execution Time: {dijkstra_run_time} seconds")
 
     # If an optimal path is found, create animation
-    if len(path) > 0: 
+    if len(path) > 1: 
         animation_strt_time = time.time()  
 
         WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
