@@ -31,7 +31,7 @@ prnt_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited
 lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost, used to ensure only lowest cost in open-list
 path = deque()     # deque used for backtracking
 
-def Backtrack(vertex):
+def retrace_steps(vertex):
     """ backtracks to create a path from the current node back to the initial node. Returns printout saying whether a path was found or not"""
     # Keep backtracking until start node reached
     while vertex is not None:
@@ -103,7 +103,7 @@ def DijkstraAlgo():
             print(f"\nGoal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
             # Backtracking
             curnt_node = (curnt_x, curnt_y)
-            Backtrack(curnt_node)
+            retrace_steps(curnt_node)
             break
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
