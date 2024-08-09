@@ -42,7 +42,7 @@ def retrace_steps(vertex):
     else:
         return print('Could not find a path \n')
 
-def user_inputs():
+def get_user_inputs():
     """ Asks the user to enter the start and goal points, and returns them"""
     start_pt_trigger = 1
     goal_pt_trigger =1
@@ -77,7 +77,7 @@ def user_inputs():
 def DijkstraAlgo():
     """Searches for optimal path from a user-input starting point to a goal point """
 
-    start_x, start_y, goal_x, goal_y = user_inputs()
+    start_x, start_y, goal_x, goal_y = get_user_inputs()
 
     cost2c_start, parent_node = 0.0, None
     # creating tuple with cost to come and coordinate values (x,y) 
