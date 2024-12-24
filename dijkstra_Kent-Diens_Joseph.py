@@ -8,35 +8,40 @@ pygame.init()
 WINDOW_WIDTH = 1200
 WINDOW_HEIGHT = 500
 
-def ObstacleCheck(x_cord, y_cord):
-    """Checks if a point is in the obstacle space. Takes the point's (x,y) as input and returns False if it's in the obstacle space & True if it's not. """
+open_list = []  # to be used for heapq for nodes in the open-list
+close_list = set() # set to store the nodes without c2c for fast comparison with new nodes
+parent_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited mapped to their parents
+lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost
+path = deque()     # deque used for backtracking
+
+def ObstacleCheck(x, y):
+    """Checks if a point is in the obstacle space. 
+    Takes the point's (x,y) as input and returns False if it's in the obstacle space & True if it's not. """
     # Hexagon Obstacle
-    if (y_cord >= (-x_cord/math.sqrt(3) + 90 + 650/math.sqrt(3))) and (y_cord <= (-x_cord/math.sqrt(3) + 410 + 650/math.sqrt(3))) and (x_cord >= (650 - 80*math.sqrt(3))) and (x_cord <= (650 + 80*math.sqrt(3))) and (y_cord <= (x_cord/math.sqrt(3) + 410 -650/math.sqrt(3))) and (y_cord >= (x_cord/math.sqrt(3) + 90 -650/math.sqrt(3))):
+    if (y >= (-x/math.sqrt(3) + 90 + 650/math.sqrt(3))) and (y <= (-x/math.sqrt(3) + 410 + 650/math.sqrt(3))) and \
+        (x >= (650 - 80*math.sqrt(3))) and (x <= (650 + 80*math.sqrt(3))) and \
+        (y <= (x/math.sqrt(3) + 410 -650/math.sqrt(3))) and (y >= (x/math.sqrt(3) + 90 -650/math.sqrt(3))):
         return False
     # First 2 rectangular obstacles
-    elif (x_cord >=95 and x_cord<= 180 and y_cord <= 405) or (x_cord >=270 and x_cord <= 355 and y_cord >= 95):
+    elif (x >=95 and x<= 180 and y <= 405) or (x >=270 and x <= 355 and y >= 95):
         return False
     # 4th Obstacle, on the right of display
-    if (x_cord >= (1200-(205+100)) and x_cord <= (1200-100-85) and y_cord >= 45 and y_cord <= (85+45)) or (x_cord >= (1200-100-85) and x_cord <= (1200-95) and y_cord>=45 and y_cord <= (50+405)) or(x_cord >= (1200-205-100) and x_cord <= (1200-100-85) and y_cord >= (450-80) and y_cord <= (450+5)):
+    if (x >= (1200-(205+100)) and x <= (1200-100-85) and y >= 45 and y <= (85+45)) or \
+        (x >= (1200-100-85) and x <= (1200-95) and y>=45 and y <= (50+405)) or(x >= (1200-205-100) and \
+        x <= (1200-100-85) and y >= (450-80) and y <= (450+5)):
         return False
     # Border region outside all obstacles 
-    elif (x_cord <=5 or x_cord >= (WINDOW_WIDTH-5)) or (y_cord <=5 or y_cord >= (WINDOW_HEIGHT-5)):
+    elif (x <=5 or x >= (WINDOW_WIDTH-5)) or (y <=5 or y >= (WINDOW_HEIGHT-5)):
         return False
     else:               # not in obstacle space
         return True
-
-open_list = []  # to be used for heapq for nodes in the open-list
-close_list = set() # set to store the nodes without c2c for fast comparison with new nodes
-prnt_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited mapped to their parents to be used for backtracking
-lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost, used to ensure only lowest cost in open-list
-path = deque()     # deque used for backtracking
 
 def retrace_steps(vertex):
     """ backtracks to create a path from the current node back to the initial node. Returns printout saying whether a path was found or not"""
     # Keep backtracking until start node reached
     while vertex is not None:
         path.appendleft(vertex)  # Add the current node to the path
-        vertex = prnt_node_map.get(vertex)  # Move to the parent node to now search for its parent
+        vertex = parent_node_map.get(vertex)  # Move to the parent node to now search for its parent
     if len(path)>1:
         return print('Path found! \n')
     else:
@@ -44,82 +49,81 @@ def retrace_steps(vertex):
 
 def get_user_inputs():
     """ Asks the user to enter the start and goal points, and returns them"""
-    start_pt_trigger = 1
-    goal_pt_trigger =1
-    while start_pt_trigger ==1:
+
+    while True:
         try:
             start_x, startb_y = float(input('Enter starting point x-cordinate : ')), float(input('Enter starting point y-cordinate: '))
             # worst case start wrt to coord at bottom-left corner: start (6,6), goal (1194, 162) or goal (1194, 338)
+            start_y = 500 - startb_y # convert from coordinate w.r.t the lower-left corner of display to upper left-corner coordinate (pygame coord)
+            if not ObstacleCheck(start_x, start_y):
+                print('The chosen start point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
+            else:
+                break
         except:
             print('you did not enter a number, please enter only numbers')
-            continue
-        start_y = 500 - startb_y # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
-        if not ObstacleCheck(start_x, start_y):
-            print('The chosen start point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
-        else:
-            start_pt_trigger = 0
-    while goal_pt_trigger == 1:
+
+    while True:
         try:
             goal_x, goalb_y = float(input('Enter goal point x- cordinate: ')), float(input('Enter goal point y-cordinate: '))
+            goal_y = 500 - goalb_y  # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
+            if not ObstacleCheck(goal_x, goal_y):
+                print('The chosen goal point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
+                continue
+            if (start_x,start_y) == (goal_x, goal_y):
+                print('you chose the same starting and goal points, choose different starting and goal points')
+                continue
+            return start_x, start_y, goal_x, goal_y 
         except:
             print('you did not enter a number, please enter only numbers')
-            continue
-        goal_y = 500 - goalb_y  # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
-        if not ObstacleCheck(goal_x, goal_y):
-            print('The chosen goal point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
-            continue
-        if (start_x,start_y) == (goal_x, goal_y):
-            print('you chose the same starting and goal points, choose different starting and goal points')
-        else:
-            goal_pt_trigger = 0
-    return start_x, start_y, goal_x, goal_y 
 
 def DijkstraAlgo():
     """Searches for optimal path from a user-input starting point to a goal point """
 
     start_x, start_y, goal_x, goal_y = get_user_inputs()
 
-    cost2c_start, parent_node = 0.0, None
+    cost2c_start = 0.0 # starting point cost-to-come
     # creating tuple with cost to come and coordinate values (x,y) 
-    n1 = (cost2c_start,(start_x, start_y))  
+    node1 = (cost2c_start,(start_x, start_y))  
 
     #Push elements to heap queue which also simultaneously heapifies the queue
-    hq.heappush(open_list, n1)
+    hq.heappush(open_list, node1)
     # Update lowest cost and parent node maps with starting point info
     lowest_c2c_map[(start_x, start_y)] = cost2c_start
-    prnt_node_map[(start_x, start_y)] = parent_node
+    parent_node_map[(start_x, start_y)] = None
 
     # Dijkstra while loop to generate new nodes
     while len(open_list) > 0:
-        active_node = hq.heappop(open_list)
-        curnt_cost2c, curnt_x, curnt_y = active_node[0], active_node[1][0], active_node[1][1]
+        current_cost2come, (current_x, current_y) = hq.heappop(open_list)
         # Filter out nodes that had higher cost in the open-list compared to in the lowest cost map
-        if lowest_c2c_map.get(curnt_x, curnt_y) is not None and curnt_cost2c > lowest_c2c_map.get((curnt_x, curnt_y)):
+        if lowest_c2c_map.get(current_x, current_y) is not None and \
+            current_cost2come > lowest_c2c_map.get((current_x, current_y)):
             continue
 
-        close_list.add((curnt_x, curnt_y))  # add popped-node into closed list
+        close_list.add((current_x, current_y))  # add popped-node into closed set
         # Check if we've reached the goal,if yes, backtrack to find path
-        if (curnt_x, curnt_y) == (goal_x, goal_y):
-            print(f"\nGoal point {(curnt_x, WINDOW_HEIGHT-curnt_y)} reached!")
+        if (current_x, current_y) == (goal_x, goal_y):
+            print(f"\nGoal point {(current_x, WINDOW_HEIGHT-current_y)} reached!")
             # Backtracking
-            curnt_node = (curnt_x, curnt_y)
-            retrace_steps(curnt_node)
+            current_node = (current_x, current_y)
+            retrace_steps(current_node)
             break
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
-        for dx, dy, cost2c in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)): 
-            nx, ny = curnt_x + dx, curnt_y + dy
+        for dx, dy, cost2c in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), \
+                               (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)): 
+            new_x, new_y = current_x + dx, current_y + dy
             # Ignore node if it's in the obstacle space.
-            if not ObstacleCheck(nx,ny):
+            if not ObstacleCheck(new_x,new_y):
                 continue
 
-            if (nx, ny) not in close_list:
-                new_cost2c = curnt_cost2c + cost2c
-                # Only update the heapq & other dictionaries if new node not in lowest-cost map or if now it's the lowest-cost node  
-                if (nx, ny) not in lowest_c2c_map or new_cost2c < lowest_c2c_map.get((nx, ny)):
-                    prnt_node_map[(nx, ny)] = (curnt_x, curnt_y)
-                    lowest_c2c_map[(nx,ny)] = new_cost2c
-                    hq.heappush(open_list, (new_cost2c, (nx,ny)))
+            if (new_x, new_y) not in close_list:
+                new_cost2c = current_cost2come + cost2c
+                # Only update the heapq & other dictionaries if new node not in lowest-cost map 
+                # or if now it's the lowest-cost node  
+                if (new_x, new_y) not in lowest_c2c_map or new_cost2c < lowest_c2c_map.get((new_x, new_y)):
+                    parent_node_map[(new_x, new_y)] = (current_x, current_y)
+                    lowest_c2c_map[(new_x,new_y)] = new_cost2c
+                    hq.heappush(open_list, (new_cost2c, (new_x,new_y)))
         # Stop if the algorithm can't find a solution
         if len(open_list)== 0:
             print('No solution could be found')
@@ -188,9 +192,9 @@ def draw_environment(WINDOW):
     pygame.draw.rect(WINDOW, RED, (1200-100-200, 50+75+400-75-75, 200, 75))
     pygame.display.update()
 
-def animate_explored_nodes(WINDOW, prnt_node_map, nodes_per_frame=10):
+def animate_explored_nodes(WINDOW, parent_node_map, nodes_per_frame=10):
     """ Animates the explored nodes. Takes the display-window and parent-node map dictionary as inputs"""
-    node_list = list(prnt_node_map.keys())
+    node_list = list(parent_node_map.keys())
     for i in range(0, len(node_list), nodes_per_frame):
         for node in node_list[i:i+nodes_per_frame]:
             pygame.draw.circle(WINDOW, GREEN, (int(node[0]), int(node[1])), 1)
@@ -220,7 +224,7 @@ def main():
         WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption('DIJKSTRA!')
         draw_environment(WINDOW)
-        animate_explored_nodes(WINDOW, prnt_node_map)
+        animate_explored_nodes(WINDOW, parent_node_map)
         animate_optimal_path(WINDOW, path)
 
         animation_end_time = time.time()
