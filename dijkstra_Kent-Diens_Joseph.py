@@ -1,43 +1,40 @@
-import pygame, sys, math, time
 import heapq as hq
+import sys
+import math
+import time
 from collections import deque
+import pygame
 from pygame.locals import *
+from numba import jit
 pygame.init()
 
-# Initialize Pygame window
-WINDOW_WIDTH = 1200
-WINDOW_HEIGHT = 500
-
-open_list = []  # to be used for heapq for nodes in the open-list
-close_list = set() # set to store the nodes without c2c for fast comparison with new nodes
-parent_node_map = {} # dictionary (key=node, val=parent) for all the nodes visited mapped to their parents
-lowest_c2c_map ={} # dictionary (key=node, val=c2c) to keep track of the nodes and their cost
-path = deque()     # deque used for backtracking
-
-def ObstacleCheck(x, y):
+@jit(nopython=True)
+def is_in_obstacle(x, y, window_width, window_height):
     """Checks if a point is in the obstacle space. 
-    Takes the point's (x,y) as input and returns False if it's in the obstacle space & True if it's not. """
+    Takes the point's (x,y) as input and returns False 
+    if it's in the obstacle space & True if it's not. """
     # Hexagon Obstacle
-    if (y >= (-x/math.sqrt(3) + 90 + 650/math.sqrt(3))) and (y <= (-x/math.sqrt(3) + 410 + 650/math.sqrt(3))) and \
-        (x >= (650 - 80*math.sqrt(3))) and (x <= (650 + 80*math.sqrt(3))) and \
-        (y <= (x/math.sqrt(3) + 410 -650/math.sqrt(3))) and (y >= (x/math.sqrt(3) + 90 -650/math.sqrt(3))):
-        return False
-    # First 2 rectangular obstacles
-    elif (x >=95 and x<= 180 and y <= 405) or (x >=270 and x <= 355 and y >= 95):
-        return False
-    # 4th Obstacle, on the right of display
-    if (x >= (1200-(205+100)) and x <= (1200-100-85) and y >= 45 and y <= (85+45)) or \
-        (x >= (1200-100-85) and x <= (1200-95) and y>=45 and y <= (50+405)) or(x >= (1200-205-100) and \
-        x <= (1200-100-85) and y >= (450-80) and y <= (450+5)):
-        return False
-    # Border region outside all obstacles 
-    elif (x <=5 or x >= (WINDOW_WIDTH-5)) or (y <=5 or y >= (WINDOW_HEIGHT-5)):
-        return False
-    else:               # not in obstacle space
+    if (-x/math.sqrt(3) + 90 + 650/math.sqrt(3))<= y <= (-x/math.sqrt(3) + 410 + 650/math.sqrt(3)) and \
+        ((650 - 80*math.sqrt(3)) <= x <= (650 + 80*math.sqrt(3))) and \
+        ((x/math.sqrt(3) + 90 -650/math.sqrt(3)) <= y <= (x/math.sqrt(3) + 410 -650/math.sqrt(3))):
         return True
+    # First 2 rectangular obstacles
+    if (95 <= x<= 180 and y <= 405) or (270 <= x <= 355 and y >= 95):
+        return True
+    # 4th Obstacle, on the right of display
+    if ((1200-(205+100)) <= x <= (1200-100-85) and 45 <= y <= (85+45)) or \
+        ((1200-100-85) <= x <= (1200-95) and 45 <= y <= (50+405)) or \
+            ((1200-205-100) <= x <= (1200-100-85) and (450-80) <= y <= (450+5)):
+        return True
+    # Border region outside all obstacles
+    if (x <=5 or x >= (window_width-5)) or (y <=5 or y >= (window_height-5)):
+        return True
+    else:               # not in obstacle space
+        return False
 
-def retrace_steps(vertex):
-    """ backtracks to create a path from the current node back to the initial node. Returns printout saying whether a path was found or not"""
+def retrace_steps(vertex, parent_node_map, path):
+    """ backtracks to create a path from the current node back to the initial node. 
+    Returns printout saying whether a path was found or not"""
     # Keep backtracking until start node reached
     while vertex is not None:
         path.appendleft(vertex)  # Add the current node to the path
@@ -47,46 +44,57 @@ def retrace_steps(vertex):
     else:
         return print('Could not find a path \n')
 
-def get_user_inputs():
+def get_user_inputs(window_width, window_height):
     """ Asks the user to enter the start and goal points, and returns them"""
 
     while True:
         try:
-            start_x, startb_y = float(input('Enter starting point x-cordinate : ')), float(input('Enter starting point y-cordinate: '))
-            # worst case start wrt to coord at bottom-left corner: start (6,6), goal (1194, 162) or goal (1194, 338)
-            start_y = 500 - startb_y # convert from coordinate w.r.t the lower-left corner of display to upper left-corner coordinate (pygame coord)
-            if not ObstacleCheck(start_x, start_y):
-                print('The chosen start point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
+            # worst case start wrt to coord at bottom-left corner:
+            # start (6,6), goal (1194, 162) or goal (1194, 338)
+            start_x, startb_y = float(input('Enter starting point x-cordinate : ')), \
+                float(input('Enter starting point y-cordinate: '))
+            # convert from coordinate w.r.t the lower-left corner of display to
+            # upper left-corner coordinate (pygame coord)
+            start_y = 500 - startb_y
+            if is_in_obstacle(start_x, start_y, window_width, window_height):
+                print('The chosen start point is in the obstacle space or',
+                       'too close to the border or', 
+                      'out of the display dimensions, choose another one.')
             else:
                 break
-        except:
+        except ValueError:
             print('you did not enter a number, please enter only numbers')
 
     while True:
         try:
-            goal_x, goalb_y = float(input('Enter goal point x- cordinate: ')), float(input('Enter goal point y-cordinate: '))
-            goal_y = 500 - goalb_y  # convert from coordinate wrt to lower-left corner of display to upper left-corner coordinate (pygame coord)
-            if not ObstacleCheck(goal_x, goal_y):
-                print('The chosen goal point is in the obstacle space or too close to the border or out of the display dimensions, choose another one.')
+            goal_x, goalb_y = float(input('Enter goal point x- cordinate: ')), \
+                float(input('Enter goal point y-cordinate: '))
+            # convert from coordinate wrt to lower-left corner of display to
+            # upper left-corner coordinate (pygame coord)
+            goal_y = 500 - goalb_y  
+            if is_in_obstacle(goal_x, goal_y, window_width, window_height):
+                print('The chosen goal point is in the obstacle space or',
+                       ' too close to the border or',
+                       ' out of the display dimensions, choose another one.')
                 continue
             if (start_x,start_y) == (goal_x, goal_y):
-                print('you chose the same starting and goal points, choose different starting and goal points')
+                print('you chose the same starting and goal points,',
+                       'choose different starting and goal points.')
                 continue
-            return start_x, start_y, goal_x, goal_y 
-        except:
+            return start_x, start_y, goal_x, goal_y
+        except ValueError:
             print('you did not enter a number, please enter only numbers')
 
-def DijkstraAlgo():
+def dijkstra_path(open_list, closed_list, parent_node_map, lowest_c2c_map, path,
+                  window_width, window_height):
     """Searches for optimal path from a user-input starting point to a goal point """
 
-    start_x, start_y, goal_x, goal_y = get_user_inputs()
-
+    start_x, start_y, goal_x, goal_y = get_user_inputs(window_width, window_height)
+    dijkstra_strt_time = round(time.time(), 2) # start time of algorithm
     cost2c_start = 0.0 # starting point cost-to-come
-    # creating tuple with cost to come and coordinate values (x,y) 
-    node1 = (cost2c_start,(start_x, start_y))  
 
-    #Push elements to heap queue which also simultaneously heapifies the queue
-    hq.heappush(open_list, node1)
+    #Push first node to heap queue which also simultaneously heapifies the queue
+    hq.heappush(open_list, (cost2c_start,(start_x, start_y)))
     # Update lowest cost and parent node maps with starting point info
     lowest_c2c_map[(start_x, start_y)] = cost2c_start
     parent_node_map[(start_x, start_y)] = None
@@ -99,28 +107,30 @@ def DijkstraAlgo():
             current_cost2come > lowest_c2c_map.get((current_x, current_y)):
             continue
 
-        close_list.add((current_x, current_y))  # add popped-node into closed set
+        closed_list.add((current_x, current_y))  # add popped-node into closed set
         # Check if we've reached the goal,if yes, backtrack to find path
         if (current_x, current_y) == (goal_x, goal_y):
-            print(f"\nGoal point {(current_x, WINDOW_HEIGHT-current_y)} reached!")
+            print(f"\nGoal point {(current_x, window_height-current_y)} reached!")
             # Backtracking
             current_node = (current_x, current_y)
-            retrace_steps(current_node)
-            break
+            retrace_steps(current_node, parent_node_map, path)
+            dijkstra_end_time = round(time.time(), 2) # end time of algorithm
+            return parent_node_map, path, dijkstra_end_time-dijkstra_strt_time
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
-        for dx, dy, cost2c in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), \
-                               (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)): 
+        for dx, dy, cost2come in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), \
+                               (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)):
             new_x, new_y = current_x + dx, current_y + dy
             # Ignore node if it's in the obstacle space.
-            if not ObstacleCheck(new_x,new_y):
+            if is_in_obstacle(new_x,new_y, window_width, window_height):
                 continue
 
-            if (new_x, new_y) not in close_list:
-                new_cost2c = current_cost2come + cost2c
-                # Only update the heapq & other dictionaries if new node not in lowest-cost map 
-                # or if now it's the lowest-cost node  
-                if (new_x, new_y) not in lowest_c2c_map or new_cost2c < lowest_c2c_map.get((new_x, new_y)):
+            if (new_x, new_y) not in closed_list:
+                new_cost2c = current_cost2come + cost2come
+                # Only update the heapq & other dictionaries if new node not in lowest-cost map
+                # or if now it's the lowest-cost node
+                if (new_x, new_y) not in lowest_c2c_map or \
+                    new_cost2c < lowest_c2c_map.get((new_x, new_y)):
                     parent_node_map[(new_x, new_y)] = (current_x, current_y)
                     lowest_c2c_map[(new_x,new_y)] = new_cost2c
                     hq.heappush(open_list, (new_cost2c, (new_x,new_y)))
@@ -193,7 +203,8 @@ def draw_environment(WINDOW):
     pygame.display.update()
 
 def animate_explored_nodes(WINDOW, parent_node_map, nodes_per_frame=10):
-    """ Animates the explored nodes. Takes the display-window and parent-node map dictionary as inputs"""
+    """ Animates the explored nodes. Takes the display-window and 
+    parent-node map dictionary as inputs"""
     node_list = list(parent_node_map.keys())
     for i in range(0, len(node_list), nodes_per_frame):
         for node in node_list[i:i+nodes_per_frame]:
@@ -211,26 +222,38 @@ def animate_optimal_path(WINDOW, path):
 #### MAIN FUNCTION (start algorithm, then animates) ###############
 def main():
     """ Main function to start and animate the algorithm search"""
-    dijkstra_strt_time = time.time()
-    DijkstraAlgo()
-    dijkstra_end_time = time.time()
-    dijkstra_run_time = dijkstra_end_time - dijkstra_strt_time  # calculates runtime of the search algorithm
+    # Initialize Pygame window
+    WINDOW_WIDTH = 1200
+    WINDOW_HEIGHT = 500
+
+    open_list = []  # to be used for heapq for nodes in the open-list
+    closed_list = set() # set to store the nodes without c2c for fast comparison with new nodes
+    parent_node_map = {} # dict (key= visited-node, value=parent)
+    lowest_c2c_map ={} # dict (key=node, val=c2c) to keep track of the nodes and their cost
+    path = deque()     # deque used for backtracking
+
+
+    parent_nodes_map, full_path, dijkstra_run_time = dijkstra_path(open_list, closed_list, 
+                                                                   parent_node_map,
+                                                lowest_c2c_map, path, WINDOW_WIDTH, WINDOW_HEIGHT)
+    
     print(f"Dijkstra Algorithm Execution Time: {dijkstra_run_time} seconds")
 
     # If an optimal path is found, create animation
-    if len(path) > 1: 
-        animation_strt_time = time.time()  
+    if len(path) > 1:
+        animation_strt_time = time.time()
 
         WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption('DIJKSTRA!')
         draw_environment(WINDOW)
-        animate_explored_nodes(WINDOW, parent_node_map)
-        animate_optimal_path(WINDOW, path)
+        animate_explored_nodes(WINDOW, parent_nodes_map)
+        animate_optimal_path(WINDOW, full_path)
 
         animation_end_time = time.time()
         animation_run_time = animation_end_time - animation_strt_time
         print(f"Animation Execution Time: {animation_run_time} seconds, \n")
-        print(f'Total execution time of search algorithm & animation {dijkstra_run_time+animation_run_time} seconds')
+        print(f'Total execution time of search algorithm & animation \
+               {dijkstra_run_time+animation_run_time} seconds')
         # Main game loop for event handling
         while True:
             for event in pygame.event.get():
