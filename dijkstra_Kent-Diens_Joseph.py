@@ -8,6 +8,9 @@ from pygame.locals import *
 from numba import jit
 pygame.init()
 
+
+    
+
 @jit(nopython=True)
 def is_in_obstacle(x, y, window_width, window_height):
     """Checks if a point is in the obstacle space. 
@@ -81,16 +84,21 @@ def get_user_inputs(window_width, window_height):
                 print('you chose the same starting and goal points,',
                        'choose different starting and goal points.')
                 continue
-            return start_x, start_y, goal_x, goal_y
+            return (start_x, start_y), (goal_x, goal_y)
         except ValueError:
             print('you did not enter a number, please enter only numbers')
 
-def dijkstra_path(open_list, closed_list, parent_node_map, lowest_c2c_map, path,
-                  window_width, window_height):
+def dijkstra_path(start, goal, window_size):
     """Searches for optimal path from a user-input starting point to a goal point """
+    window_width, window_height = window_size
+    open_list = []  # to be used for heapq for nodes in the open-list
+    closed_list = set() # set to store the nodes without c2c for fast comparison with new nodes
+    parent_node_map = {} # dict (key= visited-node, value=parent)
+    lowest_c2c_map ={} # dict (key=node, val=c2c) to keep track of the nodes and their cost
+    path = deque()     # deque used for backtracking
 
-    start_x, start_y, goal_x, goal_y = get_user_inputs(window_width, window_height)
-    dijkstra_strt_time = round(time.time(), 2) # start time of algorithm
+    start_x, start_y, goal_x, goal_y = start, goal
+    dijkstra_strt_time = time.time() # start time of algorithm
     cost2c_start = 0.0 # starting point cost-to-come
 
     #Push first node to heap queue which also simultaneously heapifies the queue
@@ -114,7 +122,7 @@ def dijkstra_path(open_list, closed_list, parent_node_map, lowest_c2c_map, path,
             # Backtracking
             current_node = (current_x, current_y)
             retrace_steps(current_node, parent_node_map, path)
-            dijkstra_end_time = round(time.time(), 2) # end time of algorithm
+            dijkstra_end_time = time.time() # end time of algorithm
             return parent_node_map, path, dijkstra_end_time-dijkstra_strt_time
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
@@ -225,22 +233,72 @@ def main():
     # Initialize Pygame window
     WINDOW_WIDTH = 1200
     WINDOW_HEIGHT = 500
+    WINDOW_SIZE = (WINDOW_WIDTH, WINDOW_HEIGHT)
+    CLEARANCE = 5
 
-    open_list = []  # to be used for heapq for nodes in the open-list
-    closed_list = set() # set to store the nodes without c2c for fast comparison with new nodes
-    parent_node_map = {} # dict (key= visited-node, value=parent)
-    lowest_c2c_map ={} # dict (key=node, val=c2c) to keep track of the nodes and their cost
-    path = deque()     # deque used for backtracking
+    BLUE_BACKROUND = (0, 40, 255) # blue
+    RED_OBSTACLES = (255, 30, 70)   # RED
+    YELLOW_CLEARANCE = (255, 255, 0)
+    GREEN_NODES = (0, 100, 0)
+    WHITE_PATH = (255, 255, 255)
 
+    # Game Setup
+    FPS = 60
+    fpsClock = pygame.time.Clock()
+    # x, y, width, height
+    HEXAGON_CENTER = (650, WINDOW_HEIGHT/2)
+    HEXAGON_SIDE_LENGTH = 150
+    BLOATED_HEXAGON_SIDE_LENGTH = HEXAGON_SIDE_LENGTH + 2 * CLEARANCE
+    # Vertex A starts from top left vertical side, then go clockwise for the other vertices
+    VERTEX_A = (HEXAGON_CENTER[0] - 0.5*HEXAGON_SIDE_LENGTH*math.sqrt(3),
+                HEXAGON_CENTER[1]-HEXAGON_SIDE_LENGTH+HEXAGON_SIDE_LENGTH/2)
+    VERTEX_B = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]-HEXAGON_SIDE_LENGTH)
+    VERTEX_C = (HEXAGON_CENTER[0]+0.5*HEXAGON_SIDE_LENGTH*math.sqrt(3), VERTEX_A[1])
+    VERTEX_D = (VERTEX_C[0], VERTEX_C +HEXAGON_SIDE_LENGTH)
+    VERTEX_E = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]+HEXAGON_SIDE_LENGTH)
+    VERTEX_F = (VERTEX_A[0], VERTEX_A[1]+HEXAGON_SIDE_LENGTH)
 
-    parent_nodes_map, full_path, dijkstra_run_time = dijkstra_path(open_list, closed_list, 
-                                                                   parent_node_map,
-                                                lowest_c2c_map, path, WINDOW_WIDTH, WINDOW_HEIGHT)
-    
-    print(f"Dijkstra Algorithm Execution Time: {dijkstra_run_time} seconds")
+    # Vertices for Hexagon Obstacle
+    # vertxA = (650 - 75*math.sqrt(3), 175)
+    # vertxB = (vertxA[0], vertxA[1]+150)
+    # vertxC = (650, vertxB[1]+75)
+    # vertxD = (650+75*math.sqrt(3), vertxB[1])
+    # vertxE = (vertxD[0], vertxD[1]-150)
+    # vertxF = (650, 100)
+
+    # Vertices for hexagon bloated by 5 mm to add clearance
+    # Point A starts on left verticle side at the top, then goes down counter clock-wise
+    # bVertxA = (650-80*math.sqrt(3), 170)
+    # bVertxB = (650, 90)
+    # bVertxC = (650+80*math.sqrt(3), 170)
+    # bVertxD = (650+80*math.sqrt(3), 330)
+    # bVertxE = (650, 410)
+    # bVertxF = (650-80*math.sqrt(3), 330)
+
+    BLOATED_VERTEX_A = (HEXAGON_CENTER[0] - 0.5*BLOATED_HEXAGON_SIDE_LENGTH*math.sqrt(3), 
+                        HEXAGON_CENTER[1]-BLOATED_HEXAGON_SIDE_LENGTH+BLOATED_HEXAGON_SIDE_LENGTH/2)
+    BLOATED_VERTEX_B = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]-BLOATED_HEXAGON_SIDE_LENGTH)
+    BLOATED_VERTEX_C = (HEXAGON_CENTER[0]+0.5*BLOATED_HEXAGON_SIDE_LENGTH*math.sqrt(3), BLOATED_VERTEX_A[1])
+    BLOATED_VERTEX_D = (BLOATED_VERTEX_C[0], BLOATED_VERTEX_C +BLOATED_HEXAGON_SIDE_LENGTH)
+    BLOATED_VERTEX_E = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]+BLOATED_HEXAGON_SIDE_LENGTH)
+    BLOATED_VERTEX_F = (BLOATED_VERTEX_A[0], BLOATED_VERTEX_A[1]+BLOATED_HEXAGON_SIDE_LENGTH)
+
+    # Border rectangles to add 5 unit bloat to walls
+    wrect1 = pygame.Rect(0,0, 95, 5)
+    wrect2 = pygame.Rect(0, 5, 5, 495 )
+    wrect3 = pygame.Rect(5,495, 275-5, 5)
+    wrect4 = pygame.Rect(100+75+5, 0, 1200-180, 5)
+    wrect5 = pygame.Rect(1200-5, 5, 5, 500-5)
+    wrect6 = pygame.Rect(100+75+100+75+5, 495, 1200-250, 5)
+
+    start, goal = get_user_inputs(WINDOW_WIDTH, WINDOW_HEIGHT)
+
+    parent_nodes_map, full_path, dijkstra_run_time = dijkstra_path(start, goal, WINDOW_SIZE)
+
+    print(f"Dijkstra Algorithm Execution Time: {round(dijkstra_run_time,2)} seconds")
 
     # If an optimal path is found, create animation
-    if len(path) > 1:
+    if len(full_path) > 1:
         animation_strt_time = time.time()
 
         WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
