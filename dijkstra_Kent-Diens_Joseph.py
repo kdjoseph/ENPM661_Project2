@@ -8,58 +8,107 @@ from pygame.locals import *
 from numba import jit
 pygame.init()
 
-
+# @jit(nopython=True)
+def is_in_obstacle(x, y, window_width, window_height, bloated_obstacles):
+    """
+    Checks if a point is on any of the obstacles, then returns True if it is, and False if it is not
     
-
-@jit(nopython=True)
-def is_in_obstacle(x, y, window_width, window_height):
-    """Checks if a point is in the obstacle space. 
-    Takes the point's (x,y) as input and returns False 
-    if it's in the obstacle space & True if it's not. """
+    Args:
+        x (float): x coordinate of the point.
+        y (float): y coordinate of a point.
+        window_width (int): width of the obstacle layout.
+        window_height (int): height of the obstacle layout.
+        bloated_obstacles (dict): dictionary containing information on the different bloated obstacle shapes
+    """
     # Hexagon Obstacle
-    if (-x/math.sqrt(3) + 90 + 650/math.sqrt(3))<= y <= (-x/math.sqrt(3) + 410 + 650/math.sqrt(3)) and \
-        ((650 - 80*math.sqrt(3)) <= x <= (650 + 80*math.sqrt(3))) and \
-        ((x/math.sqrt(3) + 90 -650/math.sqrt(3)) <= y <= (x/math.sqrt(3) + 410 -650/math.sqrt(3))):
+    if (bloated_obstacles['hexagon'][1][0][0]*x+bloated_obstacles['hexagon'][1][0][1]<=y<=\
+        bloated_obstacles['hexagon'][1][2][0]*x+bloated_obstacles['hexagon'][1][2][1]) and\
+        (bloated_obstacles['hexagon'][1][1][0]*x+bloated_obstacles['hexagon'][1][1][1]<=y<=\
+            bloated_obstacles['hexagon'][1][3][0]*x+bloated_obstacles['hexagon'][1][3][1]) and\
+        bloated_obstacles['hexagon'][1][4]<=x <= bloated_obstacles['hexagon'][1][5]:
         return True
     # First 2 rectangular obstacles
-    if (95 <= x<= 180 and y <= 405) or (270 <= x <= 355 and y >= 95):
+    if (bloated_obstacles['first_left_rectangle'][2][0] <= x <= \
+        bloated_obstacles['first_left_rectangle'][2][1]\
+        and y <= bloated_obstacles['first_left_rectangle'][2][2]) or \
+            (bloated_obstacles['second_left_rectangle'][2][0] <= x <= \
+             bloated_obstacles['second_left_rectangle'][2][1]\
+        and y >= bloated_obstacles['second_left_rectangle'][2][2]):
         return True
     # 4th Obstacle, on the right of display
-    if ((1200-(205+100)) <= x <= (1200-100-85) and 45 <= y <= (85+45)) or \
-        ((1200-100-85) <= x <= (1200-95) and 45 <= y <= (50+405)) or \
-            ((1200-205-100) <= x <= (1200-100-85) and (450-80) <= y <= (450+5)):
+    if (bloated_obstacles['right_top_horizontal_rectangle'][0][0]<= x <= \
+        bloated_obstacles['right_top_horizontal_rectangle'][0][0]+bloated_obstacles['right_top_horizontal_rectangle'][1][0]\
+        and bloated_obstacles['right_top_horizontal_rectangle'][0][1]<=y<=\
+        bloated_obstacles['right_top_horizontal_rectangle'][0][1]+bloated_obstacles['right_top_horizontal_rectangle'][1][1]) or\
+        (bloated_obstacles['right_vertical_rectangle'][0][0]<= x <= \
+        bloated_obstacles['right_vertical_rectangle'][0][0]+bloated_obstacles['right_vertical_rectangle'][1][0]\
+        and bloated_obstacles['right_vertical_rectangle'][0][1]<=y<=\
+        bloated_obstacles['right_vertical_rectangle'][0][1]+bloated_obstacles['right_vertical_rectangle'][1][1]) or \
+        (bloated_obstacles['right_bottom_horizontal_rectangle'][0][0]<= x <= \
+        bloated_obstacles['right_bottom_horizontal_rectangle'][0][0]+bloated_obstacles['right_bottom_horizontal_rectangle'][1][0]\
+        and bloated_obstacles['right_bottom_horizontal_rectangle'][0][1]<=y<=\
+        bloated_obstacles['right_bottom_horizontal_rectangle'][0][1]+bloated_obstacles['right_bottom_horizontal_rectangle'][1][1]):
         return True
     # Border region outside all obstacles
-    if (x <=5 or x >= (window_width-5)) or (y <=5 or y >= (window_height-5)):
+    if (x <=bloated_obstacles['clearance'] or \
+        x >= (window_width-bloated_obstacles['clearance'])) or \
+            (y <=bloated_obstacles['clearance'] or \
+             y >= (window_height-bloated_obstacles['clearance'])):
         return True
     else:               # not in obstacle space
         return False
 
-def retrace_steps(vertex, parent_node_map, path):
-    """ backtracks to create a path from the current node back to the initial node. 
-    Returns printout saying whether a path was found or not"""
+def retrace_steps(vertex, parent_node_map):
+    """ 
+    backtracks to create a path from the current node back to the initial node. 
+    Returns the final path.
+    
+    Args:
+        vertex (tuple): x,y coordinate of final point
+        parent_node_map (dict): nodes and their parent nodes
+
+    Returns:
+        path (deque): deque containing x,y of points on the final path.
+    """
+
+    path = deque()     # deque used for backtracking
     # Keep backtracking until start node reached
     while vertex is not None:
         path.appendleft(vertex)  # Add the current node to the path
         vertex = parent_node_map.get(vertex)  # Move to the parent node to now search for its parent
     if len(path)>1:
-        return print('Path found! \n')
+        print('Path found!\n')
+        return path
     else:
-        return print('Could not find a path \n')
+        print('Could not find a path \n')
 
-def get_user_inputs(window_width, window_height):
-    """ Asks the user to enter the start and goal points, and returns them"""
+def get_user_inputs(window_width, window_height, bloated_obstacles):
+    """
+    Asks the user to enter the start and goal points, and returns them
+    
+    Args:
+        window_width (int): width of the obstacle layout
+        window_height (int): height of the obstacle layout
+        bloated_obstacles (dict): dictionary containing information on the shape & size
+        of each obstacles
+
+    Returns:
+        start, goal (tuple): combined tuple of the x,y coordinates of the start & goal points
+
+    Raises:
+        ValueError: if the user does not enter a number
+    """
 
     while True:
         try:
             # worst case start wrt to coord at bottom-left corner:
             # start (6,6), goal (1194, 162) or goal (1194, 338)
-            start_x, startb_y = float(input('Enter starting point x-cordinate : ')), \
+            start_x, startb_y = float(input('Enter starting point x-cordinate : ')),\
                 float(input('Enter starting point y-cordinate: '))
             # convert from coordinate w.r.t the lower-left corner of display to
             # upper left-corner coordinate (pygame coord)
             start_y = 500 - startb_y
-            if is_in_obstacle(start_x, start_y, window_width, window_height):
+            if is_in_obstacle(start_x, start_y, window_width, window_height, bloated_obstacles):
                 print('The chosen start point is in the obstacle space or',
                        'too close to the border or', 
                       'out of the display dimensions, choose another one.')
@@ -75,7 +124,7 @@ def get_user_inputs(window_width, window_height):
             # convert from coordinate wrt to lower-left corner of display to
             # upper left-corner coordinate (pygame coord)
             goal_y = 500 - goalb_y  
-            if is_in_obstacle(goal_x, goal_y, window_width, window_height):
+            if is_in_obstacle(goal_x, goal_y, window_width, window_height, bloated_obstacles):
                 print('The chosen goal point is in the obstacle space or',
                        ' too close to the border or',
                        ' out of the display dimensions, choose another one.')
@@ -88,31 +137,38 @@ def get_user_inputs(window_width, window_height):
         except ValueError:
             print('you did not enter a number, please enter only numbers')
 
-def dijkstra_optimal_path(start, goal, window_size):
-    """Searches for optimal path from a user-input starting point to a goal point """
-    window_width, window_height = window_size
+def dijkstra_optimal_path(start, goal, window_width, window_height, bloated_obstacles):
+    """
+    Searches for the optimal path from a starting point to a goal point.
+
+    Args:
+        start (tuple): x (float), y (float) of the starting point
+        goal (tuple): x (float), y (float) of the goal point
+
+    Returns:
+        tuple: parent_node_map (dict), optimal-path (deque), algorithm-runtime (float)
+    """
     open_list = []  # to be used for heapq for nodes in the open-list
     closed_list = set() # set to store the nodes without c2c for fast comparison with new nodes
     parent_node_map = {} # dict (key= visited-node, value=parent)
-    lowest_c2c_map ={} # dict (key=node, val=c2c) to keep track of the nodes and their cost
-    path = deque()     # deque used for backtracking
+    lowest_cost2come_map ={} # dict (key=node, val=c2c) to keep track of the nodes and their cost
 
     (start_x, start_y), (goal_x, goal_y) = start, goal
     dijkstra_strt_time = time.time() # start time of algorithm
-    cost2c_start = 0.0 # starting point cost-to-come
+    cost2come_start = 0.0 # starting point cost-to-come
 
     #Push first node to heap queue which also simultaneously heapifies the queue
-    hq.heappush(open_list, (cost2c_start,(start_x, start_y)))
+    hq.heappush(open_list, (cost2come_start,(start_x, start_y)))
     # Update lowest cost and parent node maps with starting point info
-    lowest_c2c_map[(start_x, start_y)] = cost2c_start
+    lowest_cost2come_map[(start_x, start_y)] = cost2come_start
     parent_node_map[(start_x, start_y)] = None
 
     # Dijkstra while loop to generate new nodes
     while len(open_list) > 0:
         current_cost2come, (current_x, current_y) = hq.heappop(open_list)
         # Filter out nodes that had higher cost in the open-list compared to in the lowest cost map
-        if lowest_c2c_map.get(current_x, current_y) is not None and \
-            current_cost2come > lowest_c2c_map.get((current_x, current_y)):
+        if lowest_cost2come_map.get(current_x, current_y) is not None and \
+            current_cost2come > lowest_cost2come_map.get((current_x, current_y)):
             continue
 
         closed_list.add((current_x, current_y))  # add popped-node into closed set
@@ -121,126 +177,185 @@ def dijkstra_optimal_path(start, goal, window_size):
             print(f"\nGoal point {(current_x, window_height-current_y)} reached!")
             # Backtracking
             current_node = (current_x, current_y)
-            retrace_steps(current_node, parent_node_map, path)
+            final_path = retrace_steps(current_node, parent_node_map)
             dijkstra_end_time = time.time() # end time of algorithm
-            return parent_node_map, path, dijkstra_end_time-dijkstra_strt_time
+            return parent_node_map, final_path, dijkstra_end_time-dijkstra_strt_time
 
         # Explore neighbors with 8 possible actions (delta_x, delat_y, cost-to-come)
         for dx, dy, cost2come in ((0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1), \
                                (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)):
             new_x, new_y = current_x + dx, current_y + dy
             # Ignore node if it's in the obstacle space.
-            if is_in_obstacle(new_x,new_y, window_width, window_height):
+            if is_in_obstacle(new_x,new_y, window_width, window_height, bloated_obstacles):
                 continue
 
             if (new_x, new_y) not in closed_list:
-                new_cost2c = current_cost2come + cost2come
+                new_cost2come = current_cost2come + cost2come
                 # Only update the heapq & other dictionaries if new node not in lowest-cost map
                 # or if now it's the lowest-cost node
-                if (new_x, new_y) not in lowest_c2c_map or \
-                    new_cost2c < lowest_c2c_map.get((new_x, new_y)):
+                if (new_x, new_y) not in lowest_cost2come_map or \
+                    new_cost2come < lowest_cost2come_map.get((new_x, new_y)):
                     parent_node_map[(new_x, new_y)] = (current_x, current_y)
-                    lowest_c2c_map[(new_x,new_y)] = new_cost2c
-                    hq.heappush(open_list, (new_cost2c, (new_x,new_y)))
+                    lowest_cost2come_map[(new_x,new_y)] = new_cost2come
+                    hq.heappush(open_list, (new_cost2come, (new_x,new_y)))
         # Stop if the algorithm can't find a solution
         if len(open_list)== 0:
             print('No solution could be found')
             break
 
-#### ANIMATION SECTION ####
-# Colours (R, G, B)
-BACKGROUND = (0, 40, 255) # blue
-RED = (255, 30, 70)
-YELLOW = (255, 255, 0)
-GREEN = (0, 100, 0)
-WHITE = (255, 255, 255)
+def draw_environment(WINDOW, background_color, obstacle_color, bloated_obstacle_color,\
+                     obstacles, bloated_obstacles):
+    """ 
+    Draws the entire obstacle layout, including the obstacles & the background
+    
+    Args:
+        window (constant): pygame surface
+        background_color (tuple): RGB(int,int,int) values to define the background color
+        obstacle_color (tuple): RGB(int,int,int) values to define the color of the obstacles
+        bloated_obstacle_color (tuple): RGB(int,int,int) values to define the color of the bloated obstacles
+        obstacles (dict): dictionary containing information on the different obstacle-shapes
+        bloated_obstacles (dict): dictionary containing information on the different bloated obstacle-shapes
+    """
 
-# Game Setup
-FPS = 60
-fpsClock = pygame.time.Clock()
-
-# Vertices for Hexagon Obstacle
-vertxA = (650 - 75*math.sqrt(3), 175)
-vertxB = (vertxA[0], vertxA[1]+150)
-vertxC = (650, vertxB[1]+75)
-vertxD = (650+75*math.sqrt(3), vertxB[1])
-vertxE = (vertxD[0], vertxD[1]-150)
-vertxF = (650, 100)
-
-# Vertices for hexagon bloated by 5 mm to add clearance
-# Point A starts on left verticle side at the top, then goes down counter clock-wise
-bVertxA = (650-80*math.sqrt(3), 170)
-bVertxB = (650, 90)
-bVertxC = (650+80*math.sqrt(3), 170)
-bVertxD = (650+80*math.sqrt(3), 330)
-bVertxE = (650, 410)
-bVertxF = (650-80*math.sqrt(3), 330)
-
-# Border rectangles to add 5 unit bloat to walls
-wrect1 = pygame.Rect(0,0, 95, 5)
-wrect2 = pygame.Rect(0, 5, 5, 495 )
-wrect3 = pygame.Rect(5,495, 275-5, 5)
-wrect4 = pygame.Rect(100+75+5, 0, 1200-180, 5)
-wrect5 = pygame.Rect(1200-5, 5, 5, 500-5)
-wrect6 = pygame.Rect(100+75+100+75+5, 495, 1200-250, 5)
-
-def draw_environment(WINDOW):
-    """ Draws the obstacles and background """
-    WINDOW.fill(BACKGROUND)
+    WINDOW.fill(background_color)
     # Highligh 5 unit bloat around obstacles
-    pygame.draw.polygon(WINDOW, YELLOW, (bVertxA, bVertxB, bVertxC, bVertxD, bVertxE, bVertxF))
-    pygame.draw.rect(WINDOW, YELLOW, (95, 0, 85, 405))
-    pygame.draw.rect(WINDOW, YELLOW, (270, 95, 85, 405))
-    pygame.draw.rect(WINDOW, YELLOW, (1200-(205+100), 45, 210, 85))
-    pygame.draw.rect(WINDOW, YELLOW, (1200-(100+200-115), 50+75, 90, 400-75-75))
-    pygame.draw.rect(WINDOW, YELLOW, (1200-(205+100), 50+75+(400-75*2)-5, 210, 85))
+    pygame.draw.polygon(WINDOW, bloated_obstacle_color, (bloated_obstacles['hexagon'][0][0],
+                                                         bloated_obstacles['hexagon'][0][1],
+                                                         bloated_obstacles['hexagon'][0][2],
+                                                         bloated_obstacles['hexagon'][0][3],
+                                                         bloated_obstacles['hexagon'][0][4],
+                                                         bloated_obstacles['hexagon'][0][5]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['first_left_rectangle'][0][0],
+                                                      bloated_obstacles['first_left_rectangle'][0][1],
+                                                      bloated_obstacles['first_left_rectangle'][1][0],
+                                                      bloated_obstacles['first_left_rectangle'][1][1]))
+
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['second_left_rectangle'][0][0],
+                                                      bloated_obstacles['second_left_rectangle'][0][1],
+                                                      bloated_obstacles['second_left_rectangle'][1][0],
+                                                      bloated_obstacles['second_left_rectangle'][1][1]))
+    
+
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['right_top_horizontal_rectangle'][0][0],
+                                                      bloated_obstacles['right_top_horizontal_rectangle'][0][1],
+                                                      bloated_obstacles['right_top_horizontal_rectangle'][1][0],
+                                                      bloated_obstacles['right_top_horizontal_rectangle'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['right_vertical_rectangle'][0][0],
+                                                      bloated_obstacles['right_vertical_rectangle'][0][1],
+                                                      bloated_obstacles['right_vertical_rectangle'][1][0],
+                                                      bloated_obstacles['right_vertical_rectangle'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['right_bottom_horizontal_rectangle'][0][0],
+                                                      bloated_obstacles['right_bottom_horizontal_rectangle'][0][1],
+                                                      bloated_obstacles['right_bottom_horizontal_rectangle'][1][0],
+                                                      bloated_obstacles['right_bottom_horizontal_rectangle'][1][1]))
     # Drawing the 5 unit bloat for walls
-    pygame.draw.rect(WINDOW, YELLOW, wrect1)
-    pygame.draw.rect(WINDOW, YELLOW, wrect2)
-    pygame.draw.rect(WINDOW, YELLOW, wrect3)
-    pygame.draw.rect(WINDOW, YELLOW, wrect4)
-    pygame.draw.rect(WINDOW, YELLOW, wrect5)
-    pygame.draw.rect(WINDOW, YELLOW, wrect6)
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['top_left_border'][0][0],
+                                                      bloated_obstacles['top_left_border'][0][1],
+                                                      bloated_obstacles['top_left_border'][1][0],
+                                                      bloated_obstacles['top_left_border'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['top_border'][0][0],
+                                                      bloated_obstacles['top_border'][0][1],
+                                                      bloated_obstacles['top_border'][1][0],
+                                                      bloated_obstacles['top_border'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['left_vertical_border'][0][0],
+                                                      bloated_obstacles['left_vertical_border'][0][1],
+                                                      bloated_obstacles['left_vertical_border'][1][0],
+                                                      bloated_obstacles['left_vertical_border'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['bottom_left_horizontal_border'][0][0],
+                                                      bloated_obstacles['bottom_left_horizontal_border'][0][1],
+                                                      bloated_obstacles['bottom_left_horizontal_border'][1][0],
+                                                      bloated_obstacles['bottom_left_horizontal_border'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['bottom_horizontal_border'][0][0],
+                                                      bloated_obstacles['bottom_horizontal_border'][0][1],
+                                                      bloated_obstacles['bottom_horizontal_border'][1][0],
+                                                      bloated_obstacles['bottom_horizontal_border'][1][1]))
+    
+    pygame.draw.rect(WINDOW, bloated_obstacle_color, (bloated_obstacles['right_vertical_border'][0][0],
+                                                      bloated_obstacles['right_vertical_border'][0][1],
+                                                      bloated_obstacles['right_vertical_border'][1][0],
+                                                      bloated_obstacles['right_vertical_border'][1][1]))
     # Actual obstacles
-    pygame.draw.polygon(WINDOW, RED, (vertxA, vertxB, vertxC, vertxD, vertxE, vertxF))
-    pygame.draw.rect(WINDOW, RED, (100, 0, 75, 400))
-    pygame.draw.rect(WINDOW, RED, (100+75+100, 500-400, 75, 400))
-    pygame.draw.rect(WINDOW, RED, (1200-100-200, 50, 200, 75))
-    pygame.draw.rect(WINDOW, RED, (1200-100-200+120, 50+75, 200-120, 400-75-75))
-    pygame.draw.rect(WINDOW, RED, (1200-100-200, 50+75+400-75-75, 200, 75))
+    pygame.draw.polygon(WINDOW, obstacle_color, (obstacles['hexagon'][0],
+                                                 obstacles['hexagon'][1],
+                                                 obstacles['hexagon'][2],
+                                                 obstacles['hexagon'][3],
+                                                 obstacles['hexagon'][4],
+                                                 obstacles['hexagon'][5]))
+
+    pygame.draw.rect(WINDOW, obstacle_color, (obstacles['first_left_rectangle'][0][0],
+                                                      obstacles['first_left_rectangle'][0][1],
+                                                      obstacles['first_left_rectangle'][1][0],
+                                                      obstacles['first_left_rectangle'][1][1]))
+
+    pygame.draw.rect(WINDOW, obstacle_color, (obstacles['second_left_rectangle'][0][0],
+                                                      obstacles['second_left_rectangle'][0][1],
+                                                      obstacles['second_left_rectangle'][1][0],
+                                                      obstacles['second_left_rectangle'][1][1]))
+
+    pygame.draw.rect(WINDOW, obstacle_color, (obstacles['right_top_horizontal_rectangle'][0][0],
+                                                      obstacles['right_top_horizontal_rectangle'][0][1],
+                                                      obstacles['right_top_horizontal_rectangle'][1][0],
+                                                      obstacles['right_top_horizontal_rectangle'][1][1]))
+    
+    pygame.draw.rect(WINDOW, obstacle_color, (obstacles['right_vertical_rectangle'][0][0],
+                                                      obstacles['right_vertical_rectangle'][0][1],
+                                                      obstacles['right_vertical_rectangle'][1][0],
+                                                      obstacles['right_vertical_rectangle'][1][1]))
+    
+    pygame.draw.rect(WINDOW, obstacle_color, (obstacles['right_bottom_horizontal_rectangle'][0][0],
+                                                      obstacles['right_bottom_horizontal_rectangle'][0][1],
+                                                      obstacles['right_bottom_horizontal_rectangle'][1][0],
+                                                      obstacles['right_bottom_horizontal_rectangle'][1][1]))
     pygame.display.update()
 
-def animate_explored_nodes(WINDOW, parent_node_map, nodes_per_frame=10):
-    """ Animates the explored nodes. Takes the display-window and 
-    parent-node map dictionary as inputs"""
+def animate_explored_nodes(WINDOW, node_color, parent_node_map, nodes_per_frame=10):
+    """ 
+    Animates the explored nodes. Takes the display-window.
+    
+    Args:
+        window (contant): pygame surface
+        node_color (tuple): RGB (int, int, int) tuple to set the color of the nodes
+        parent_node_map (dict): dictionairy containing the explored nodes & their corresponding parent-nodes
+        nodes_per_frame (int): int to set how many nodes to display at once during each animation frame.
+    """
     node_list = list(parent_node_map.keys())
     for i in range(0, len(node_list), nodes_per_frame):
         for node in node_list[i:i+nodes_per_frame]:
-            pygame.draw.circle(WINDOW, GREEN, (int(node[0]), int(node[1])), 1)
+            pygame.draw.circle(WINDOW, node_color, (int(node[0]), int(node[1])), 1)
         pygame.display.update()
         pygame.time.delay(1)  # delay to adjust animation speed
 
-def animate_optimal_path(WINDOW, path):
+def animate_optimal_path(WINDOW, path_color, path):
     """Function to animate moving from start to goal using the optimal path"""
     for node in path:
-        pygame.draw.circle(WINDOW, WHITE, (int(node[0]), int(node[1])), 2)
+        pygame.draw.circle(WINDOW, path_color, (int(node[0]), int(node[1])), 2)
         pygame.display.update()
         pygame.time.delay(4)  # delay to adjust animation speed
 
 #### MAIN FUNCTION (start algorithm, then animates) ###############
 def main():
-    """ Main function to start and animate the algorithm search"""
+    """ 
+    Uses the Dijkstra Algorithm to find the optimal path between user chosen start and goal points, 
+    then creates & animation of the search process & of the optimal path
+    """
     # Initialize Pygame window
     WINDOW_WIDTH = 1200
     WINDOW_HEIGHT = 500
-    WINDOW_SIZE = (WINDOW_WIDTH, WINDOW_HEIGHT)
+    # WINDOW_SIZE = (WINDOW_WIDTH, WINDOW_HEIGHT)
     CLEARANCE = 5
 
-    BLUE_BACKROUND = (0, 40, 255) # blue
-    RED_OBSTACLE_EQTNS = (255, 30, 70)   # RED
-    YELLOW_CLEARANCE = (255, 255, 0)
-    GREEN_NODES = (0, 100, 0)
-    WHITE_PATH = (255, 255, 255)
+    BACKROUND_COLOR = (0, 40, 255) # blue
+    OBSTACLE_COLOR = (255, 30, 70)   # RED
+    BLOATED_OBSTACLE_COLOR = (255, 255, 0) # yellow
+    NODES_COLOR = (0, 100, 0) # green
+    PATH_COLOR = (255, 255, 255) # white
 
     # Game Setup
     FPS = 60
@@ -252,7 +367,8 @@ def main():
     FIRST_LEFT_RECTANGLE_HEIGHT = 400
     FIRST_LEFT_RECTANGLE_WIDTH = 75
 
-    OBSTACLES = {'first_left_rectangle': ((FIRST_LEFT_RECTANGLE_X, FIRST_LEFT_RECTANGLE_Y), (FIRST_LEFT_RECTANGLE_WIDTH, FIRST_LEFT_RECTANGLE_HEIGHT))}
+    OBSTACLES = {'first_left_rectangle': ((FIRST_LEFT_RECTANGLE_X, FIRST_LEFT_RECTANGLE_Y),
+                                          (FIRST_LEFT_RECTANGLE_WIDTH, FIRST_LEFT_RECTANGLE_HEIGHT))}
 
     BLOATED_FIRST_LEFT_RECTANGLE_X = FIRST_LEFT_RECTANGLE_X-CLEARANCE
     BLOATED_FIRST_LEFT_RECTANGLE_Y = FIRST_LEFT_RECTANGLE_Y
@@ -272,25 +388,22 @@ def main():
     SECOND_LEFT_RECTANGLE_HEIGHT = FIRST_LEFT_RECTANGLE_HEIGHT
     SECOND_LEFT_RECTANGLE_WIDTH = FIRST_LEFT_RECTANGLE_WIDTH
     SECOND_LEFT_RECTANGLE_X = FIRST_LEFT_RECTANGLE_X + FIRST_LEFT_RECTANGLE_WIDTH + 100
-    SECOND_LEFT_RECTANGLE_Y = WINDOW_HEIGHT - SECOND_LEFT_RECTANGLE_WIDTH
+    SECOND_LEFT_RECTANGLE_Y = WINDOW_HEIGHT - FIRST_LEFT_RECTANGLE_HEIGHT
     OBSTACLES['second_left_rectangle'] = ((SECOND_LEFT_RECTANGLE_X, SECOND_LEFT_RECTANGLE_Y),
                                           (SECOND_LEFT_RECTANGLE_WIDTH, SECOND_LEFT_RECTANGLE_HEIGHT))
     BLOATED_SECOND_LEFT_RECTANGLE_X = SECOND_LEFT_RECTANGLE_X-CLEARANCE
-    BLOATED_SECOND_LEFT_RECTANGLE_Y = SECOND_LEFT_RECTANGLE_Y
+    BLOATED_SECOND_LEFT_RECTANGLE_Y = SECOND_LEFT_RECTANGLE_Y-CLEARANCE
     BLOATED_SECOND_LEFT_RECTANGLE_HEIGHT= SECOND_LEFT_RECTANGLE_HEIGHT + CLEARANCE
     BLOATED_SECOND_LEFT_RECTANGLE_WIDTH = SECOND_LEFT_RECTANGLE_WIDTH + 2*CLEARANCE
 
     BLOATED_SECOND_RECTANGLE_LEFT_VERTICAL_EDGE = BLOATED_SECOND_LEFT_RECTANGLE_X
     BLOATED_SECOND_RECTANGLE_RIGHT_VERTICAL_EDGE = BLOATED_SECOND_LEFT_RECTANGLE_X + BLOATED_SECOND_LEFT_RECTANGLE_WIDTH
-    BLOATED_SECOND_RECTANGLE_BOTTOM_HORIZONTAL_EDGE = BLOATED_SECOND_LEFT_RECTANGLE_HEIGHT
+    BLOATED_SECOND_RECTANGLE_BOTTOM_HORIZONTAL_EDGE = BLOATED_SECOND_LEFT_RECTANGLE_Y
     BLOATED_OBSTACLES['second_left_rectangle'] = ((BLOATED_SECOND_LEFT_RECTANGLE_X, BLOATED_SECOND_LEFT_RECTANGLE_Y),
                                                   (BLOATED_SECOND_LEFT_RECTANGLE_WIDTH, BLOATED_SECOND_LEFT_RECTANGLE_HEIGHT),
                                                   (BLOATED_SECOND_RECTANGLE_LEFT_VERTICAL_EDGE,
                                           BLOATED_SECOND_RECTANGLE_RIGHT_VERTICAL_EDGE,
                                           BLOATED_SECOND_RECTANGLE_BOTTOM_HORIZONTAL_EDGE))
-    # x, y, width, height
-
-
     ###### HEXAGON BLOATED_OBSTACLES ###### 
 
     HEXAGON_CENTER = (SECOND_LEFT_RECTANGLE_X+SECOND_LEFT_RECTANGLE_WIDTH+300, WINDOW_HEIGHT/2)
@@ -298,36 +411,20 @@ def main():
     BLOATED_HEXAGON_SIDE_LENGTH = HEXAGON_SIDE_LENGTH + 2 * CLEARANCE
     # Vertex A starts from top left vertical side, then go clockwise for the other vertices
     VERTEX_A = (HEXAGON_CENTER[0] - 0.5*HEXAGON_SIDE_LENGTH*math.sqrt(3),
-                HEXAGON_CENTER[1]-HEXAGON_SIDE_LENGTH+HEXAGON_SIDE_LENGTH/2)
+                HEXAGON_CENTER[1]- HEXAGON_SIDE_LENGTH/2)
     VERTEX_B = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]-HEXAGON_SIDE_LENGTH)
     VERTEX_C = (HEXAGON_CENTER[0]+0.5*HEXAGON_SIDE_LENGTH*math.sqrt(3), VERTEX_A[1])
-    VERTEX_D = (VERTEX_C[0], VERTEX_C +HEXAGON_SIDE_LENGTH)
+    VERTEX_D = (VERTEX_C[0], VERTEX_C[1] +HEXAGON_SIDE_LENGTH)
     VERTEX_E = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]+HEXAGON_SIDE_LENGTH)
     VERTEX_F = (VERTEX_A[0], VERTEX_A[1]+HEXAGON_SIDE_LENGTH)
     OBSTACLES['hexagon'] = (VERTEX_A, VERTEX_B, VERTEX_C,
                             VERTEX_D, VERTEX_E, VERTEX_F)
-    # Vertices for Hexagon Obstacle
-    # vertxA = (650 - 75*math.sqrt(3), 175)
-    # vertxB = (vertxA[0], vertxA[1]+150)
-    # vertxC = (650, vertxB[1]+75)
-    # vertxD = (650+75*math.sqrt(3), vertxB[1])
-    # vertxE = (vertxD[0], vertxD[1]-150)
-    # vertxF = (650, 100)
-
-    # Vertices for hexagon bloated by 5 mm to add clearance
-    # Point A starts on left verticle side at the top, then goes down counter clock-wise
-    # bVertxA = (650-80*math.sqrt(3), 170)
-    # bVertxB = (650, 90)
-    # bVertxC = (650+80*math.sqrt(3), 170)
-    # bVertxD = (650+80*math.sqrt(3), 330)
-    # bVertxE = (650, 410)
-    # bVertxF = (650-80*math.sqrt(3), 330)
 
     BLOATED_VERTEX_A = (HEXAGON_CENTER[0] - 0.5*BLOATED_HEXAGON_SIDE_LENGTH*math.sqrt(3), 
-                        HEXAGON_CENTER[1]-BLOATED_HEXAGON_SIDE_LENGTH+BLOATED_HEXAGON_SIDE_LENGTH/2)
+                        HEXAGON_CENTER[1]- BLOATED_HEXAGON_SIDE_LENGTH/2)
     BLOATED_VERTEX_B = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]-BLOATED_HEXAGON_SIDE_LENGTH)
     BLOATED_VERTEX_C = (HEXAGON_CENTER[0]+0.5*BLOATED_HEXAGON_SIDE_LENGTH*math.sqrt(3), BLOATED_VERTEX_A[1])
-    BLOATED_VERTEX_D = (BLOATED_VERTEX_C[0], BLOATED_VERTEX_C +BLOATED_HEXAGON_SIDE_LENGTH)
+    BLOATED_VERTEX_D = (BLOATED_VERTEX_C[0], BLOATED_VERTEX_C[1] +BLOATED_HEXAGON_SIDE_LENGTH)
     BLOATED_VERTEX_E = (HEXAGON_CENTER[0], HEXAGON_CENTER[1]+BLOATED_HEXAGON_SIDE_LENGTH)
     BLOATED_VERTEX_F = (BLOATED_VERTEX_A[0], BLOATED_VERTEX_A[1]+BLOATED_HEXAGON_SIDE_LENGTH)
 
@@ -346,20 +443,14 @@ def main():
     EDGE_BC = (SLOPE_BC, Y_INTERCEPT_BC)
     EDGE_ED = (SLOPE_ED, Y_INTERCEPT_ED)
     EDGE_FE = (SLOPE_FE, Y_INTERCEPT_FE)
-    EDGE_AF = VERTEX_A[0] # (y=x) vertial edge on the left side of the hexagon
-    EDGE_CD = VERTEX_C[0] # (y=x) vertical edge on the right side of the hexagon
+    EDGE_AF = BLOATED_VERTEX_A[0] # (y=x) vertial edge on the left side of the hexagon
+    EDGE_CD = BLOATED_VERTEX_C[0] # (y=x) vertical edge on the right side of the hexagon
 
     BLOATED_OBSTACLES['hexagon'] = ((BLOATED_VERTEX_A, BLOATED_VERTEX_B, BLOATED_VERTEX_C,
                                      BLOATED_VERTEX_D, BLOATED_VERTEX_E, BLOATED_VERTEX_F),
                                      (EDGE_AB, EDGE_BC, EDGE_ED, EDGE_FE, EDGE_AF, EDGE_CD))
 
     # Border rectangles to add 5 unit bloat to walls
-    wrect1 = pygame.Rect(0,0, 95, 5)
-    wrect2 = pygame.Rect(0, 5, 5, 495 )
-    wrect3 = pygame.Rect(5,495, 275-5, 5)
-    wrect4 = pygame.Rect(100+75+5, 0, 1200-180, 5)
-    wrect5 = pygame.Rect(1200-5, 5, 5, 500-5)
-    wrect6 = pygame.Rect(100+75+100+75+5, 495, 1200-250, 5)
     # Top Left Border
     TOP_LEFT_BLOATED_BORDER_X, TOP_LEFT_BLOATED_BORDER_Y = 0, 0
     TOP_LEFT_BLOATED_BORDER_WIDTH = BLOATED_FIRST_LEFT_RECTANGLE_X
@@ -416,30 +507,38 @@ def main():
     RIGHT_VERTICAL_RECTANGLE_X = RIGHT_TOP_HORIZONTAL_RECTANGLE_X + 120
     RIGHT_VERTICAL_RECTANGLE_Y = RIGHT_TOP_HORIZONTAL_RECTANGLE_Y + RIGHT_TOP_HORIZONTAL_RECTANGLE_HEIGHT
     RIGHT_VERTICAL_RECTANGLE_WIDTH = WINDOW_WIDTH - RIGHT_TOP_HORIZONTAL_RECTANGLE_X - 100 - 120
-    RIGHT_VERTICAL_RECTANGLE_HEIGHT = 400
+    RIGHT_VERTICAL_RECTANGLE_HEIGHT = 400 - 2* RIGHT_TOP_HORIZONTAL_RECTANGLE_HEIGHT
+    OBSTACLES['right_vertical_rectangle']=((RIGHT_VERTICAL_RECTANGLE_X, RIGHT_VERTICAL_RECTANGLE_Y),
+                                           (RIGHT_VERTICAL_RECTANGLE_WIDTH, RIGHT_VERTICAL_RECTANGLE_HEIGHT))
 
     BLOATED_RIGHT_VERTICAL_RECTANGLE_X = RIGHT_VERTICAL_RECTANGLE_X - CLEARANCE
     BLOATED_RIGHT_VERTICAL_RECTANGLE_Y = RIGHT_VERTICAL_RECTANGLE_Y
     BLOATED_RIGHT_VERTICAL_RECTANGLE_WIDTH = RIGHT_VERTICAL_RECTANGLE_WIDTH + 2* CLEARANCE
-    BLOATED_RIGHT_VERTICAL_RECTANGLE_HEIGHT = RIGHT_VERTICAL_RECTANGLE_HEIGHT-RIGHT_TOP_HORIZONTAL_RECTANGLE_HEIGHT-75
-    BLOATED_OBSTACLES['right_vertical_rectangle'] = (BLOATED_RIGHT_VERTICAL_RECTANGLE_X, BLOATED_RIGHT_VERTICAL_RECTANGLE_Y)
+    BLOATED_RIGHT_VERTICAL_RECTANGLE_HEIGHT = RIGHT_VERTICAL_RECTANGLE_HEIGHT + CLEARANCE
+    BLOATED_OBSTACLES['right_vertical_rectangle'] = ((BLOATED_RIGHT_VERTICAL_RECTANGLE_X, BLOATED_RIGHT_VERTICAL_RECTANGLE_Y),
+                                                     (BLOATED_RIGHT_VERTICAL_RECTANGLE_WIDTH, BLOATED_RIGHT_VERTICAL_RECTANGLE_HEIGHT))
 
     RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_X = RIGHT_TOP_HORIZONTAL_RECTANGLE_X
-    RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y = RIGHT_TOP_HORIZONTAL_RECTANGLE_Y+RIGHT_VERTICAL_RECTANGLE_HEIGHT - 75
+    RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y = RIGHT_TOP_HORIZONTAL_RECTANGLE_Y+75+RIGHT_VERTICAL_RECTANGLE_HEIGHT
     RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_WIDTH = RIGHT_TOP_HORIZONTAL_RECTANGLE_WIDTH
     RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_HEIGHT = RIGHT_TOP_HORIZONTAL_RECTANGLE_HEIGHT
+    OBSTACLES['right_bottom_horizontal_rectangle'] = ((RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_X, RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y),
+                                                      (RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_WIDTH, RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_HEIGHT))
 
     BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_X = BLOATED_RIGHT_TOP_HORIZONTAL_RECTANGLE_X
     BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y = RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y - CLEARANCE
     BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_WIDTH = RIGHT_TOP_HORIZONTAL_RECTANGLE_WIDTH + 2* CLEARANCE
     BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_HEIGHT = RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_HEIGHT + 2 * CLEARANCE
-    BLOATED_OBSTACLES['right_bottom_horizontal_rectangle'] = (BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_X, BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y)
+    BLOATED_OBSTACLES['right_bottom_horizontal_rectangle'] = ((BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_X, BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_Y),
+                                                              (BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_WIDTH, BLOATED_RIGHT_BOTTOM_HORIZONTAL_RECTANGLE_HEIGHT))
     BLOATED_OBSTACLES['clearance'] = CLEARANCE
-
 
     start, goal = get_user_inputs(WINDOW_WIDTH, WINDOW_HEIGHT, BLOATED_OBSTACLES)
 
-    parent_nodes_map, full_path, dijkstra_run_time = dijkstra_optimal_path(start, goal, WINDOW_WIDTH, WINDOW_HEIGHT, BLOATED_OBSTACLES)
+    parent_nodes_map, full_path, dijkstra_run_time = dijkstra_optimal_path(start, goal,\
+                                                                           WINDOW_WIDTH,\
+                                                                            WINDOW_HEIGHT,\
+                                                                            BLOATED_OBSTACLES)
 
     print(f"Dijkstra Algorithm Execution Time: {round(dijkstra_run_time,2)} seconds")
 
@@ -449,15 +548,16 @@ def main():
 
         WINDOW = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption('DIJKSTRA!')
-        draw_environment(WINDOW)
-        animate_explored_nodes(WINDOW, parent_nodes_map)
-        animate_optimal_path(WINDOW, full_path)
+        draw_environment(WINDOW, BACKROUND_COLOR, OBSTACLE_COLOR,\
+                         BLOATED_OBSTACLE_COLOR, OBSTACLES, BLOATED_OBSTACLES)
+        animate_explored_nodes(WINDOW, NODES_COLOR, parent_nodes_map)
+        animate_optimal_path(WINDOW, PATH_COLOR, full_path)
 
         animation_end_time = time.time()
         animation_run_time = animation_end_time - animation_strt_time
-        print(f"Animation Execution Time: {animation_run_time} seconds, \n")
+        print(f"Animation Execution Time: {round(animation_run_time,2)} seconds, \n")
         print(f'Total execution time of search algorithm & animation \
-               {dijkstra_run_time+animation_run_time} seconds')
+               {round(dijkstra_run_time+animation_run_time, 2)} seconds')
         # Main game loop for event handling
         while True:
             for event in pygame.event.get():
