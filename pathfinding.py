@@ -61,10 +61,11 @@ def find_path(start: Tuple, goal: Tuple):
             
             if obstacles.is_collision(new_x, new_y):
                 continue
-            
-            new_cost = current_cost + move_cost
-            
-            if neighbor not in cost_map or new_cost < cost_map[neighbor]:
+            # Only update the heapq & other dictionaries if new node not in closed_set
+            # and new node not in lowest-cost map or if now it's the lowest-cost node
+            if neighbor not in closed_set and\
+                (neighbor not in cost_map or new_cost < cost_map[neighbor]):
+                new_cost = current_cost + move_cost
                 cost_map[neighbor] = new_cost
                 parent_map[neighbor] = current
                 heapq.heappush(open_list, (new_cost, neighbor))
