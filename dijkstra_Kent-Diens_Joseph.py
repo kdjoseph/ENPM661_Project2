@@ -194,7 +194,7 @@ def dijkstra_optimal_path(start, goal, window_width, window_height, bloated_obst
                 # Only update the heapq & other dictionaries if new node not in lowest-cost map
                 # or if now it's the lowest-cost node
                 if (new_x, new_y) not in lowest_cost2come_map or \
-                    new_cost2come < lowest_cost2come_map.get((new_x, new_y)):
+                    new_cost2come < lowest_cost2come_map[(new_x, new_y)]:
                     parent_node_map[(new_x, new_y)] = (current_x, current_y)
                     lowest_cost2come_map[(new_x,new_y)] = new_cost2come
                     hq.heappush(open_list, (new_cost2come, (new_x,new_y)))
