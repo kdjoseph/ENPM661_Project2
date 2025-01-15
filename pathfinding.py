@@ -1,8 +1,8 @@
 from collections import deque
+from typing import Deque, Tuple, Dict
 import heapq
 import time
 import obstacles
-from typing import Optional, Set, Deque, Tuple, Dict
 
 def find_path(start: Tuple, goal: Tuple) -> Dict:
     """
