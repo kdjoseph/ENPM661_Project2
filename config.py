@@ -4,6 +4,8 @@ import math
 def _calculate_hexagon_vertices(center: Tuple[float, float], side_length: float) -> Dict:
     """Calculate vertices for regular hexagon"""
     x, y = center
+    # Calling A the top point on the left-vertical side and the subsequent
+    # points going clock-wise around the hexagon.
     vertices = {
         'A': (x - 0.5*side_length*math.sqrt(3), y - side_length/2),
         'B': (x, y - side_length),
@@ -58,7 +60,7 @@ def _init_right_rectangles(window_width: int, clearance: int) -> Dict:
             'x': top_rect['x'] + 120 - clearance,
             'y': top_rect['y'] + top_rect['height'],
             'width': (window_width - top_rect['x'] - 100 - 120) + 2*clearance,
-            'height': (400 - 2*top_rect['height']) + CLEARANCE
+            'height': (400 - 2*top_rect['height']) + clearance
         }
     }
     
@@ -88,11 +90,11 @@ FPS: int = 60
 CLEARANCE: int = 5
 
 # Colors (RGB tuples)
-BACKGROUND_COLOR: Tuple[int, int, int] = (0, 40, 255)
-OBSTACLE_COLOR: Tuple[int, int, int] = (255, 30, 70)
-BLOATED_OBSTACLE_COLOR: Tuple[int, int, int] = (255, 255, 0)
-NODES_COLOR: Tuple[int, int, int] = (0, 100, 0)
-PATH_COLOR: Tuple[int, int, int] = (255, 255, 255)
+BACKGROUND_COLOR: Tuple[int, int, int] = (0, 40, 255) # blue
+OBSTACLE_COLOR: Tuple[int, int, int] = (255, 30, 70) # red
+BLOATED_OBSTACLE_COLOR: Tuple[int, int, int] = (255, 255, 0) # yellow
+NODES_COLOR: Tuple[int, int, int] = (0, 100, 0) # green
+PATH_COLOR: Tuple[int, int, int] = (255, 255, 255) # white
 
 """Configuration for obstacle dimensions and positions"""
 # First left rectangle
@@ -140,7 +142,7 @@ HEXAGON = {
 # Right side rectangles
 RIGHT_RECTANGLES = _init_right_rectangles(WINDOW_WIDTH, CLEARANCE)
 
-# Border Rectangles (only for visualization)
+# Bloated Border Rectangles (only for visualization)
 BLOATED_BORDERS = {
     'left_vertical': {
         'x': 0,
