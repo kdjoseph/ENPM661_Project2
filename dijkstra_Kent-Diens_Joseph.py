@@ -5,10 +5,8 @@ import time
 from collections import deque
 import pygame
 from pygame.locals import *
-from numba import jit
 pygame.init()
 
-# @jit(nopython=True)
 def is_in_obstacle(x, y, window_width, window_height, bloated_obstacles):
     """
     Checks if a point is on any of the obstacles, then returns True if it is, and False if it is not
