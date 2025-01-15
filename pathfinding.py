@@ -4,7 +4,7 @@ import time
 import obstacles
 from typing import Optional, Set, Deque, Tuple
 
-def find_path(start: Tuple, goal: Tuple):
+def find_path(start: Tuple, goal: Tuple) -> dict:
     """
     Searches for the optimal path from a starting point to a goal point.
 
@@ -78,7 +78,7 @@ def find_path(start: Tuple, goal: Tuple):
         'message': "No Path found!"
     }
 
-def _reconstruct_path(parent_map, current):
+def _reconstruct_path(parent_map: dict, current: Tuple) -> Deque:
     """ 
     backtracks to create a path from the current node back to the initial node. 
     Returns the final path.
