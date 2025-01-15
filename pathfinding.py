@@ -2,9 +2,9 @@ from collections import deque
 import heapq
 import time
 import obstacles
-from typing import Optional, Set, Deque, Tuple
+from typing import Optional, Set, Deque, Tuple, Dict
 
-def find_path(start: Tuple, goal: Tuple) -> dict:
+def find_path(start: Tuple, goal: Tuple) -> Dict:
     """
     Searches for the optimal path from a starting point to a goal point.
 
@@ -63,8 +63,7 @@ def find_path(start: Tuple, goal: Tuple) -> dict:
                 continue
             if neighbor not in closed_set:
                 new_cost = current_cost + move_cost                 
-                # Only update the heapq & other dictionaries if new node not in lowest-cost map
-                # or if now it's the lowest-cost node
+                # Choose node with lowest-cost, if the same node is found with different path.
                 if neighbor not in cost_map or new_cost < cost_map[neighbor]:
                     cost_map[neighbor] = new_cost
                     parent_map[neighbor] = current
