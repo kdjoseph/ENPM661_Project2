@@ -1,4 +1,3 @@
-from typing import Dict, Tuple, List
 import config
 
 """Manages the obstacle space and collision detection"""
