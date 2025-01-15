@@ -33,7 +33,8 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     cost_map[start] = 0
     parent_map[start] = None
     
-    # Define possible movements (8-directional)
+    # Define possible movements (8-directional: up, down, forward, back, and four diagonals)
+    # with their corresponding costs
     movements = (
         (0, 1, 1), (0, -1, 1), (-1, 0, 1), (1, 0, 1),
         (1, 1, 1.4), (-1, 1, 1.4), (-1, -1, 1.4), (1, -1, 1.4)
