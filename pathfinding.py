@@ -23,10 +23,10 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     start_time = time.time()
     
     # Initialize data structures
-    open_list = []
-    closed_set = set()
-    parent_map = {}
-    cost_map = {}
+    open_list = [] # list used to make heapq
+    closed_set = set() 
+    parent_map = {} # keeps track of nodes & matching parent
+    cost_map = {} # keeps track of nodes & their costs
     
     # Setup start node
     heapq.heappush(open_list, (0, start))
@@ -52,22 +52,22 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
                 'message': "Path found!"
             }
         
-        closed_set.add(current)
-        
+        closed_set.add(current) # add popped node to closed set
+        # make new nodes by moving in 8-directions
         for delta_x, delta_y, move_cost in movements:
             new_x = current[0] + delta_x
             new_y = current[1] + delta_y
             neighbor = (new_x, new_y)
-            
+            # Skip nodes that are in the obstacle space
             if obstacles.is_collision(new_x, new_y):
                 continue
             if neighbor not in closed_set:
                 new_cost = current_cost + move_cost                 
-                # Choose node with lowest-cost, if the same node is found with different path.
+                # Choose node with lowest-cost, if the same node is found with a different path.
                 if neighbor not in cost_map or new_cost < cost_map[neighbor]:
-                    cost_map[neighbor] = new_cost
-                    parent_map[neighbor] = current
-                    heapq.heappush(open_list, (new_cost, neighbor))
+                    cost_map[neighbor] = new_cost #update cost_map
+                    parent_map[neighbor] = current #update parent_map
+                    heapq.heappush(open_list, (new_cost, neighbor)) # add node to heapq
     
     return {
         'path': None,
