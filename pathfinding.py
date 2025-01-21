@@ -3,6 +3,7 @@ from typing import Deque, Tuple, Dict
 import heapq
 import time
 import obstacles
+import math
 
 def find_path(start: Tuple, goal: Tuple) -> Dict:
     """
@@ -43,7 +44,7 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     while open_list:
         current_cost, current = heapq.heappop(open_list)
         # Extra check: if we already found a better path to 'current', skip processing
-        if current_cost > cost_map.get(current, float('inf')):
+        if current_cost > cost_map.get(current, math.inf):
             continue
         
         if current == goal:
