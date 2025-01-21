@@ -42,6 +42,9 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     
     while open_list:
         current_cost, current = heapq.heappop(open_list)
+        # Extra check: if we already found a better path to 'current', skip processing
+        if current_cost > cost_map.get(current, float('inf')):
+            continue
         
         if current == goal:
             path = _reconstruct_path(parent_map, current)
