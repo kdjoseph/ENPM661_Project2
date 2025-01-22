@@ -22,8 +22,8 @@ def get_user_inputs():
             start_y = config.WINDOW_HEIGHT - start_y # convert to pygame coordinates
             
             if obstacles.is_collision(start_x, start_y):
-                print('Invalid start point. The point is in an obstacle, or too close to '
-                      'the borders or outside of the borders.')
+                print('Invalid start point. Point is in obstacle, too close to border\
+                      or outside of border.')
                 continue
             break
         except ValueError:
@@ -36,8 +36,7 @@ def get_user_inputs():
             goal_y = config.WINDOW_HEIGHT - goal_y # convert to pygame coordinates
             
             if obstacles.is_collision(goal_x, goal_y):
-                print('Invalid goal point. The point is in an obstacle. or too close to '
-                      'the borders or outside of the borders')
+                print('Invalid goal point. Point is in obstacle or too close to border.')
                 continue
                 
             if (start_x, start_y) == (goal_x, goal_y):
@@ -56,7 +55,7 @@ def main():
     
     # Find path
     result = pathfinding.find_path(start, goal)
-    print(f"\nPathfinding time: {result['runtime']:.2f} seconds")
+    print(f"Pathfinding time: {result['runtime']:.2f} seconds")
     
     if result['success']:
         # Initialize pygame and create visualization
@@ -83,7 +82,7 @@ def main():
                     sys.exit()
             clock.tick(config.FPS)
     else:
-        print('\n',result['message'])
+        print(result['message'])
 
 if __name__ == "__main__":
     main()
