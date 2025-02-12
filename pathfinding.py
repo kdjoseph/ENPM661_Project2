@@ -25,7 +25,7 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     
     # Initialize data structures
     open_list = [] # list used to make heapq
-    closed_set = set() 
+    closed_dict = {} # keeps track of nodes as they're removed from heapq
     parent_map = {} # keeps track of nodes & matching parent
     cost_map = {} # keeps track of nodes & their costs
     
@@ -51,13 +51,13 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
             path = _reconstruct_path(parent_map, current)
             return {
                 'path': path,
-                'visited_nodes': list(parent_map.keys()),
+                'visited_nodes': list(closed_dict.keys()),
                 'runtime': time.time() - start_time,
                 'success': True,
                 'message': "Path found!"
             }
-        
-        closed_set.add(current) # add popped node to closed set
+
+        closed_dict[current] = True # add popped node to closed dictionary
         # make new nodes by moving in 8-directions
         for delta_x, delta_y, move_cost in movements:
             new_x = current[0] + delta_x
@@ -66,7 +66,7 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
             # Skip nodes that are in the obstacle space
             if obstacles.is_collision(new_x, new_y):
                 continue
-            if neighbor not in closed_set:
+            if neighbor not in closed_dict:
                 new_cost = current_cost + move_cost                 
                 # Choose node with lowest-cost, if the same node is found with a different path.
                 if neighbor not in cost_map or new_cost < cost_map[neighbor]:
@@ -76,7 +76,7 @@ def find_path(start: Tuple, goal: Tuple) -> Dict:
     
     return {
         'path': None,
-        'visited_nodes': list(parent_map.keys()),
+        'visited_nodes': list(closed_dict.keys()),
         'runtime': time.time() - start_time,
         'success': False,
         'message': "No Path found!"
